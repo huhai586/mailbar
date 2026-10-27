@@ -16,6 +16,8 @@ struct SettingsView: View {
                 .tabItem { Label("提醒", systemImage: "bell") }.tag("alerts")
             RulesSettingsView(service: service)
                 .tabItem { Label("规则", systemImage: "line.3.horizontal.decrease.circle") }.tag("rules")
+            AISettingsView(service: service)
+                .tabItem { Label("AI", systemImage: "sparkles") }.tag("ai")
             KindSettingsView(service: service)
                 .tabItem { Label("识别", systemImage: "person.badge.shield.checkmark") }.tag("kinds")
             AccountSettingsView(service: service)
@@ -39,7 +41,6 @@ private struct GeneralSettingsView: View {
     @AppStorage(Pref.renderMarkdown) private var renderMarkdown = true
     @AppStorage(Pref.githubTextView) private var githubText = true
     @AppStorage(Pref.invertEmails) private var invertEmails = true
-    @AppStorage(Pref.landing) private var landing = "attention"
     @AppStorage(Pref.autoCleanRoutine) private var autoClean = false
     @AppStorage(Pref.pollInterval) private var poll = 10
     @AppStorage(Pref.openWindowAtLaunch) private var openAtLaunch = true
@@ -61,6 +62,8 @@ private struct GeneralSettingsView: View {
                 Picker("主题", selection: $appearance) {
                     Text("终端（深色）").tag("dark")
                     Text("纸质（浅色）").tag("light")
+                    Text("夜间（暗黑模式）").tag("night")
+                    Text("日间（明亮模式）").tag("day")
                     Text("跟随系统").tag("system")
                 }
                 Picker("界面密度", selection: $density) {
@@ -122,11 +125,7 @@ private struct GeneralSettingsView: View {
             } footer: {
                 Text("勾选的邮箱、Gmail 分类和自建标签会出现在侧栏；默认只显示「未读」和「所有邮件」。")
             }
-            Section("分诊") {
-                Picker("启动时先看", selection: $landing) {
-                    Text("待处理").tag("attention")
-                    Text("收件箱").tag("inbox")
-                }
+            Section("例行机器人") {
                 Toggle("自动把例行机器人邮件标为已读", isOn: $autoClean)
                 Text("质量门通过、包体积检查、测试汇总、评审进行中这类「一切正常」的机器人邮件，收到后直接标为已读，不再占用未读数。出问题的（CI 失败、质量门失败、测试有失败）和真人的邮件不受影响。需要「修改邮件状态」的授权。")
                     .font(.caption).foregroundStyle(.secondary)

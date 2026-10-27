@@ -16,7 +16,6 @@ struct DashboardView: View {
                 }
 
                 HStack(spacing: 12) {
-                    tile("待处理", reader.stats.attention, Theme.orange, icon: "exclamationmark.bubble.fill") { reader.select(.attention) }
                     tile("真人未读", reader.stats.humanUnread, Theme.accent, icon: "person.fill") { reader.select(.label("INBOX")) }
                     tile("例行机器人未读", reader.stats.routineUnread, Theme.muted, icon: "gearshape.2") { reader.cleanRoutine() }
                 }
@@ -25,23 +24,11 @@ struct DashboardView: View {
                         .font(Theme.ui(11.5)).foregroundStyle(Theme.faint)
                 }
 
-                if reader.dashboard.isEmpty {
-                    Label("没有待处理的邮件", systemImage: "checkmark.seal.fill")
-                        .font(Theme.ui(13)).foregroundStyle(Theme.green)
-                    if service.rules.filter(\.enabled).isEmpty { callout }
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("待处理（出问题了，或和你相关的 PR 上有真人的新评论）").font(Theme.mono(10.5, .semibold)).tracking(0.6).foregroundStyle(Theme.faint)
-                        VStack(spacing: 0) {
-                            ForEach(reader.dashboard) { thread in
-                                dashboardRow(thread)
-                            }
-                        }
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                }
+                TodoCard(reader: reader, service: service)
+
+                AssistantPanel(reader: reader, service: service, model: reader.assistant)
+
+                if service.rules.filter(\.enabled).isEmpty { callout }
 
                 shortcuts
             }

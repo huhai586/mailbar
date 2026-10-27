@@ -125,6 +125,7 @@ private func ci(_ id: String, workflow: String = "Blackbox Tests", title: String
             try s.db.write { db in
                 try db.execute(sql: "UPDATE message SET prKey = NULL")
                 try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'v4-pr-key'")
+                try db.execute(sql: "DROP INDEX message_group_key")   // 依赖 prKey / kind 列，先删
                 try db.execute(sql: "DROP INDEX message_prkey")
                 try db.execute(sql: "ALTER TABLE message DROP COLUMN prKey")
             }

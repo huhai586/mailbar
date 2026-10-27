@@ -58,7 +58,7 @@ final class ReaderModel: ObservableObject {
         var unread: Int { threads.filter(\.isUnread).count }
     }
 
-    @Published var mailbox: Mailbox = Pref.landingIsAttention ? .attention : .label("INBOX")
+    @Published var mailbox: Mailbox = .allMail
     @Published var searchText = ""
     @Published var unreadOnly = false
     /// 只看某个来源（"github" / "jira" / "googleDocs" / "other"），nil 表示全部
@@ -74,8 +74,6 @@ final class ReaderModel: ObservableObject {
     @Published var selectedThreadID: String?
     /// 右侧详情顶部的筛选，按分组记住（切到别的 PR 再回来还是上次的选择）
     @Published var detailFilters: [String: DetailFilter] = [:]
-    /// 看过的行：标为已读后不立刻挪位置、不立刻消失，记下它所在的分段，等退出这个列表（换邮箱 / 筛选 / 搜索）或手动刷新再整理
-    private var stickySections: [String: String] = [:]
     @Published var showPalette = false
     /// 每 +1 请求一次搜索框获得焦点
     @Published var focusSearchTick = 0
@@ -95,6 +93,8 @@ final class ReaderModel: ObservableObject {
     @Published private(set) var jiraHost: String?
     /// 自动识别出的 GitHub 用户名（设置里没填时用它判断"有没有 @ 你"）
     @Published private(set) var detectedLogin: String?
+    var mailTools: StoreMailTools? { service.store.map { StoreMailTools(store: $0) } }
+
     var githubLogin: String? {
         let manual = (UserDefaults.standard.string(forKey: Pref.githubLogin) ?? "").trimmingCharacters(in: .whitespaces)
         return manual.isEmpty ? detectedLogin : manual.trimmingCharacters(in: CharacterSet(charactersIn: "@"))
@@ -118,13 +118,16 @@ final class ReaderModel: ObservableObject {
     }
 
     let service: MailService
+    /// 今日概览里的 AI 助手（对话和简报）；换页面不丢
+    let assistant = AssistantModel()
     private var cancellables = Set<AnyCancellable>()
     private let pageSize = 100
     private var limit = 100
     /// 从通知 / 菜单跳转过来时，等切换完邮箱再选中的会话
     private var pendingThreadID: String?
     private var markTask: Task<Void, Never>?
-    /// 上一次触发自动标记已读的会话|邮件：只在选中项变化时标记，避免用户手动标回未读后又被改回已读
+    /// 上一次触发自动标记已读的「会话|最新一封」：同一封不重复标，避免用户手动标回未读后又被改回已读；
+    /// 取消选中（或换成别的会话）后清空，所以再点回来、或者看着时又来了新邮件，都会再标一次。
     private var lastAutoMarkKey: String?
 
     init(service: MailService) {
@@ -135,19 +138,19 @@ final class ReaderModel: ObservableObject {
             guard let self else { return }
             selectedThreadID = pendingThreadID
             pendingThreadID = nil
-            reloadThreads(resetPaging: true)
+            scheduleReload()
         }.store(in: &cancellables)
 
         $searchText.dropFirst().removeDuplicates().debounce(for: .milliseconds(200), scheduler: DispatchQueue.main).sink { [weak self] _ in
-            self?.reloadThreads(resetPaging: true)
+            self?.scheduleReload()
         }.store(in: &cancellables)
 
         $unreadOnly.dropFirst().removeDuplicates().receive(on: DispatchQueue.main).sink { [weak self] _ in
-            self?.reloadThreads(resetPaging: true)
+            self?.scheduleReload()
         }.store(in: &cancellables)
 
         $sourceFilter.dropFirst().removeDuplicates().receive(on: DispatchQueue.main).sink { [weak self] _ in
-            self?.reloadThreads(resetPaging: true)
+            self?.scheduleReload()
         }.store(in: &cancellables)
 
         $groupByPR.dropFirst().removeDuplicates().receive(on: DispatchQueue.main).sink { [weak self] value in
@@ -163,8 +166,6 @@ final class ReaderModel: ObservableObject {
 
         $selectedThreadID.removeDuplicates().receive(on: DispatchQueue.main).sink { [weak self] _ in
             guard let self else { return }
-            // 选中过的行"粘住"：之后标为已读也留在原位，直到退出列表或手动刷新
-            if let current = selectedThread, stickySections[current.id] == nil { stickySections[current.id] = sectionID(of: current) }
             loadMessages()
         }.store(in: &cancellables)
 
@@ -173,12 +174,6 @@ final class ReaderModel: ObservableObject {
             guard let self else { return }
             let value = UserDefaults.standard.object(forKey: Pref.groupByPR) as? Bool ?? true
             if value != groupByPR { groupByPR = value }
-        }.store(in: &cancellables)
-
-        service.$settleTick.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] _ in
-            guard let self, !stickySections.isEmpty else { return }
-            stickySections = [:]
-            reloadThreads(resetPaging: false)
         }.store(in: &cancellables)
 
         service.$revision.receive(on: DispatchQueue.main).sink { [weak self] _ in
@@ -231,23 +226,29 @@ final class ReaderModel: ObservableObject {
         loadMessages()
     }
 
+    /// 切换邮箱时会同时改 mailbox / sourceFilter / searchText，每个都会触发一次重新加载；合并成下一轮只加载一次
+    /// （每次加载都要在主线程查库并重建整个列表，重复做就是"卡"）。
+    private var reloadScheduled = false
+    private func scheduleReload() {
+        guard !reloadScheduled else { return }
+        reloadScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            reloadScheduled = false
+            reloadThreads(resetPaging: true)
+        }
+    }
+
     func reloadThreads(resetPaging: Bool) {
         guard let store = service.store else { return }
-        if resetPaging { limit = pageSize; stickySections = [:] }
+        if resetPaging { limit = pageSize }
         do {
             // 多取一条用来判断还有没有下一页
             let rows = try store.threads(in: mailbox, search: searchText, unreadOnly: unreadOnly, source: sourceFilter,
                                          groupByPR: groupByPR, limit: limit + 1)
             sourceCounts = try store.sourceCounts(in: mailbox, search: searchText, groupByPR: groupByPR)
             hasMore = rows.count > limit
-            var page = Array(rows.prefix(limit))
-            // 看过的行因为状态变化（比如刚被标为已读）不再满足当前筛选时，留在原位，等退出列表或手动刷新再消失
-            if !resetPaging, !stickySections.isEmpty {
-                let present = Set(page.map(\.id))
-                for (index, row) in threads.enumerated() where stickySections[row.id] != nil && !present.contains(row.id) {
-                    page.insert(row.markedRead(), at: min(index, page.count))
-                }
-            }
+            let page = Array(rows.prefix(limit))
             if page != threads { threads = page }
             errorText = nil
         } catch {
@@ -272,6 +273,7 @@ final class ReaderModel: ObservableObject {
     private func loadMessages() {
         guard let id = selectedThreadID, let store = service.store else {
             if !messages.isEmpty { messages = [] }
+            lastAutoMarkKey = nil
             return
         }
         let loaded = (try? store.messages(inGroup: id)) ?? []
@@ -316,7 +318,7 @@ final class ReaderModel: ObservableObject {
         func add(_ id: String, _ title: String, _ icon: String, _ color: String, _ rows: [ThreadSummary], collapsed: Bool = false, cleanable: Bool = false) {
             if !rows.isEmpty { result.append(ListSection(id: id, title: title, icon: icon, colorName: color, threads: rows, collapsedByDefault: collapsed, cleanable: cleanable)) }
         }
-        func rows(_ id: String) -> [ThreadSummary] { threads.filter { effectiveSectionID(of: $0) == id } }
+        func rows(_ id: String) -> [ThreadSummary] { threads.filter { sectionID(of: $0) == id } }
         add("github.attention", "GitHub · 需要处理", "exclamationmark.bubble.fill", "orange", rows("github.attention"))
         add("github.activity", "GitHub · 有新动态", "text.bubble", "blue", rows("github.activity"))
         add("github.routine", "GitHub · 仅机器人更新", "gearshape.2", "gray", rows("github.routine"), collapsed: true, cleanable: true)
@@ -333,11 +335,6 @@ final class ReaderModel: ObservableObject {
         if t.needsAttention { return "github.attention" }
         if t.humanUnread > 0 { return "github.activity" }
         return t.unreadCount > 0 ? "github.routine" : "github.read"
-    }
-
-    /// 看过的行沿用当时的分段，其余按当前状态。
-    private func effectiveSectionID(of t: ThreadSummary) -> String {
-        stickySections[t.id] ?? sectionID(of: t)
     }
 
     func isCollapsed(_ section: ListSection) -> Bool {
@@ -365,18 +362,29 @@ final class ReaderModel: ObservableObject {
 
     /// 按设置在查看邮件后把它（或整个会话）标为已读。
     private func scheduleAutoMarkRead() {
-        guard Pref.markRead != .manual, service.canModify, let threadId = selectedThreadID, let latest = messages.last else { return }
-        guard threadId != lastAutoMarkKey else { return }
-        lastAutoMarkKey = threadId
+        guard Pref.markRead != .manual, service.canModify, let threadId = selectedThreadID, let latest = messages.last else {
+            trace("[AutoMark] 跳过：mode=%@ canModify=%d selected=%@ messages=%d", Pref.markRead.rawValue, service.canModify, selectedThreadID ?? "-", messages.count)
+            return
+        }
+        let key = "\(threadId)|\(latest.id)"
+        guard key != lastAutoMarkKey else {
+            trace("[AutoMark] 跳过：同一封已处理过 key=%@ 未读=%d", key, messages.filter(\.isUnread).count)
+            return
+        }
+        lastAutoMarkKey = key
 
         // 会话以时间线展示，所有邮件都在眼前；"只标记当前这封"时只标最新的一封
         let ids = Pref.markWholeThread ? messages.filter(\.isUnread).map(\.id) : (latest.isUnread ? [latest.id] : [])
+        trace("[AutoMark] thread=%@ 邮件=%d 要标已读=%d", threadId, messages.count, ids.count)
         guard !ids.isEmpty else { return }
         markTask?.cancel()
         let delay = Pref.markRead == .afterDelay ? Pref.markReadDelaySeconds : 0
         markTask = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000) }
-            guard !Task.isCancelled, let self, self.selectedThreadID == threadId else { return }
+            guard !Task.isCancelled, let self, self.selectedThreadID == threadId else {
+                trace("[AutoMark] 取消：thread=%@", threadId)
+                return
+            }
             await self.service.setRead(true, messageIds: ids)
         }
     }
@@ -458,5 +466,18 @@ final class ReaderModel: ObservableObject {
             selectedThreadID = resolveGroup(forThread: threadId)
         }
         service.consumeNavigation(request)
+    }
+}
+
+/// 诊断日志：追加写到 ~/Library/Logs/MailBar-trace.log（统一日志会把字符串参数遮成 <private>，排查时看不到内容）。
+func trace(_ format: String, _ args: CVarArg...) {
+    let line = "\(ISO8601DateFormatter().string(from: Date())) " + String(format: format, arguments: args) + "\n"
+    let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/MailBar-trace.log")
+    if let handle = try? FileHandle(forWritingTo: url) {
+        handle.seekToEndOfFile()
+        handle.write(Data(line.utf8))
+        try? handle.close()
+    } else {
+        try? Data(line.utf8).write(to: url)
     }
 }

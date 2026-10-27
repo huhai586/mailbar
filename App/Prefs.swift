@@ -16,7 +16,7 @@ enum MarkReadMode: String, CaseIterable, Identifiable {
 /// 全部设置项的键和默认值。界面用 @AppStorage(Pref.xxx)，非界面代码用下面的计算属性读取。
 enum Pref {
     // 外观
-    static let appearance = "appearance"          // dark / light / system
+    static let appearance = "appearance"          // dark（终端）/ light（纸质）/ night / day / system
     static let listDensity = "listDensity"        // 旧的列表密度（已被 uiDensity 取代，保留键避免旧设置报错）
     static let uiDensity = "uiDensity"            // 整体密度：compact（紧凑）/ standard（标准）/ spacious（宽松）
     static let fontSet = "fontSet"                // 字体套装：jetbrains（默认）/ plex / system
@@ -104,7 +104,6 @@ enum Pref {
     static var pollIntervalSeconds: Int { max(3, store.integer(forKey: pollInterval)) }
     static var openWindowOnLaunch: Bool { store.bool(forKey: openWindowAtLaunch) }
     static var remoteImagesDefault: Bool { store.bool(forKey: loadRemoteImages) }
-    static var landingIsAttention: Bool { store.string(forKey: landing) != "inbox" }
     static var autoClean: Bool { store.bool(forKey: autoCleanRoutine) }
     static var markRead: MarkReadMode { MarkReadMode(rawValue: store.string(forKey: markReadMode) ?? "") ?? .onOpen }
     static var markReadDelaySeconds: Int { max(1, store.integer(forKey: markReadDelay)) }

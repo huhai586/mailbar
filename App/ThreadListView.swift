@@ -363,8 +363,10 @@ private struct ThreadRow: View {
             .padding(.vertical, Theme.pad(compact ? 9 : 11))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .background(selected ? Theme.accent.opacity(0.09) : (hovering ? Theme.hover : (unread ? Theme.raised.opacity(0.55) : .clear)), in: RoundedRectangle(cornerRadius: 10))
-        .overlay { if selected { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1) } }
+        .background(hovering ? Theme.hover : (unread ? Theme.raised.opacity(0.55) : .clear), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(alignment: .leading) {
+            if selected { Capsule().fill(Theme.accent).frame(width: 3).padding(.vertical, 8) }   // 选中只亮一条左侧竖线，不改背景
+        }
         .padding(.horizontal, 6).padding(.vertical, 1)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.7)).frame(height: 0.5) }
         .contentShape(Rectangle())

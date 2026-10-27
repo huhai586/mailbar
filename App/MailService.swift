@@ -50,6 +50,15 @@ final class MailService: ObservableObject {
     private var loopTask: Task<Void, Never>?
     /// 旧邮件的 X-GitHub-Reason 是否已经补完（升级前同步的数据没有这个字段）
     private var reasonBackfillDone = false
+    /// 待办 / 提醒有变化时 +1，界面据此刷新
+    @Published private(set) var todoRevision = 0
+    /// 每天自动简报生成好了 +1
+    @Published private(set) var briefRevision = 0
+    var assistantTask: Task<Void, Never>?
+    var lastFollowUpCheck = Date.distantPast
+    var lastBriefAttempt = Date.distantPast
+    func bumpTodos() { todoRevision += 1 }
+    func bumpBrief() { briefRevision += 1 }
 
     var accountEmail: String? { store?.accountEmail }
 
@@ -64,6 +73,7 @@ final class MailService: ObservableObject {
     func start() {
         notifier.start()
         notifier.onStrongHits = { [weak self] hits in self?.strongAlerts.show(hits) }
+        notifier.onFeedback = { [weak self] messageId, value in try? self?.store?.setFeedback(messageId: messageId, value: value) }
         loadKindConfig()
         setupCore()
         reloadRules()
@@ -74,6 +84,7 @@ final class MailService: ObservableObject {
                 try? await Task.sleep(nanoseconds: UInt64(Pref.pollIntervalSeconds) * 1_000_000_000)
             }
         }
+        startAssistantLoop()
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             // 刚唤醒时网络可能还没恢复，稍等再同步
             Task { @MainActor in
@@ -116,6 +127,7 @@ final class MailService: ObservableObject {
         monitor.alertMaxAge = Pref.alertMaxAgeSeconds > 0 ? Pref.alertMaxAgeSeconds : .infinity
         do {
             monitor.newMailAlerts = Pref.newMailAlertMode
+            monitor.aiJudge = Self.configuredJudge()
             let result = try await monitor.syncOnce()
             lastSync = Date()
             lastError = nil
@@ -154,9 +166,15 @@ final class MailService: ObservableObject {
 
     func syncNow() { Task { await tick() } }
 
-    /// 用户主动刷新（按钮、r、菜单）：同时让列表把"已读但留在原位"的行整理到该去的位置。
-    @Published private(set) var settleTick = 0
-    func manualSync() { settleTick += 1; syncNow() }
+    /// 用户主动刷新（按钮、r、菜单）。
+    /// 设置里打开了「AI 判断通知」并选好服务时，返回对应的判定器。
+    static func configuredJudge() -> AINotifyJudge? {
+        let config = AIConfigStore.read()
+        guard config.notifyEnabled, let provider = config.active else { return nil }
+        return AINotifyJudge(chat: AIClient(provider: provider, apiKey: AIKeyStore.key(for: provider.id)), prompt: config.notifyPrompt)
+    }
+
+    func manualSync() { syncNow() }
 
     /// 切回应用时：距离上次同步超过几秒就立刻同步一次，保证一眼看到的是最新的。
     func syncIfStale(after seconds: TimeInterval = 3) {
@@ -201,7 +219,11 @@ final class MailService: ObservableObject {
 
     /// 标记已读 / 未读：本地立刻变化，随后同步到 Gmail；失败会回滚并在状态栏显示原因。
     func setRead(_ read: Bool, messageIds: [String]) async {
-        guard let actions, !messageIds.isEmpty else { return }
+        guard let actions, !messageIds.isEmpty else {
+            trace("[setRead] 跳过：actions=%d ids=%d", actions != nil, messageIds.count)
+            return
+        }
+        trace("[setRead] read=%d ids=%d", read, messageIds.count)
         #if DEBUG
         // 调试的"不同步"模式不能碰邮箱：不改本地、也不向 Gmail 发任何请求
         if UserDefaults.standard.bool(forKey: "noSync") { return }
@@ -211,6 +233,7 @@ final class MailService: ObservableObject {
                 Task { @MainActor in self?.revision += 1 }
             })
             lastError = nil
+            trace("[setRead] 完成")
         } catch MailError.reauthorizationRequired {
             canModify = false
             UserDefaults.standard.set(false, forKey: Pref.canModifyCache)
@@ -218,6 +241,7 @@ final class MailService: ObservableObject {
             lastError = MailError.reauthorizationRequired.localizedDescription
         } catch {
             revision += 1
+            trace("[setRead] 失败：%@", error.localizedDescription)
             lastError = "标记失败：\(error.localizedDescription)"
         }
     }

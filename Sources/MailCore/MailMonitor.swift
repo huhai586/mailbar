@@ -70,6 +70,20 @@ final class MonitorState: @unchecked Sendable {
         set { lock.withLock { newMailAlertsValue = newValue } }
     }
 
+    private var aiJudgeValue: AINotifyJudge?
+    private var aiCandidates: [AICandidate] = []
+
+    /// 等 AI 判断的邮件，连同它命中的提醒规则（AI 说要通知时沿用规则的声音 / 强提醒）。
+    struct AICandidate { let message: ParsedMessage; let ruleHits: [RuleHit] }
+    /// 设置了就由 AI 决定所有新邮件要不要通知（高于提醒规则，规则只负责声音 / 强提醒）；出错时回退到规则和 newMailAlerts。
+    var aiJudge: AINotifyJudge? {
+        get { lock.withLock { aiJudgeValue } }
+        set { lock.withLock { aiJudgeValue = newValue } }
+    }
+
+    /// 一轮同步里最多交给 AI 的邮件数，超出的按 newMailAlerts 处理，避免一次积压几百封把费用打爆。
+    static let maxAICandidates = 20
+
     /// 太旧的邮件（比如电脑睡了几天后才同步到）不弹提醒，只记录命中
     static let defaultMaxAlertAge: TimeInterval = 24 * 3600
     private var maxAlertAgeValue = MonitorState.defaultMaxAlertAge
@@ -90,15 +104,22 @@ final class MonitorState: @unchecked Sendable {
 
     func handle(_ messages: [ParsedMessage], mode: SyncSummary.Mode) throws {
         let set = rules
+        let judging = aiJudge != nil
         for message in messages {
+            var ruleHits: [RuleHit] = []
             for rule in set.matching(Matchable(message)) {
                 let first = try store.recordMatch(messageId: message.id, ruleName: rule.name)
                 guard first, mode == .incremental, rule.notify, isAlertable(message) else { continue }
                 let hit = RuleHit(messageId: message.id, threadId: message.threadId, ruleName: rule.name,
                                   subject: message.subject, from: message.from, snippet: message.snippet,
                                   sound: rule.sound, strong: rule.strong)
-                lock.withLock { pending.append(hit) }
+                if judging { ruleHits.append(hit) } else { lock.withLock { pending.append(hit) } }
             }
+            if judging, mode == .incremental, isAlertable(message) {
+                lock.withLock { aiCandidates.append(AICandidate(message: message, ruleHits: ruleHits)) }
+                continue
+            }
+            if judging, !ruleHits.isEmpty { lock.withLock { pending.append(contentsOf: ruleHits) } }   // 不会交给 AI 的（全量同步 / 太旧）保持原样
             // 没命中规则的新邮件：按"新邮件通知"设置也提醒。放在规则命中之后，takeAlerts 按邮件去重时规则命中（声音、强提醒）优先。
             if mode == .incremental, newMailAlerts.accepts(kind: message.kind), isAlertable(message) {
                 let hit = RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "新邮件",
@@ -107,6 +128,65 @@ final class MonitorState: @unchecked Sendable {
                 lock.withLock { pending.append(hit) }
             }
         }
+    }
+
+    /// 让 AI 逐封判断本轮收集到的候选邮件，通知的加入待提醒；AI 出错的邮件回退到"新邮件通知"设置。
+    func judgeCandidates() async {
+        guard let baseJudge = aiJudge else { return }
+        let judge = baseJudge.withContext(AIContext.build(store: store))
+        let all = lock.withLock { () -> [AICandidate] in
+            defer { aiCandidates = [] }
+            return aiCandidates
+        }
+        let batch = Array(all.prefix(Self.maxAICandidates))
+        var hits: [RuleHit] = []
+        for candidate in all.dropFirst(Self.maxAICandidates) { hits.append(contentsOf: fallbackHits(for: candidate)) }
+
+        await withTaskGroup(of: [RuleHit].self) { group in
+            var iterator = batch.makeIterator()
+            func addNext() -> Bool {
+                guard let candidate = iterator.next() else { return false }
+                let message = candidate.message
+                group.addTask { [self] in
+                    do {
+                        let verdict = try await judge.judge(subject: message.subject, from: message.from, source: message.source,
+                                                            kind: message.kind, body: message.bodyText)
+                        try? store.recordDecision(messageId: message.id, groupKey: message.prKey ?? message.threadId, subject: message.subject,
+                                                  from: message.from, source: message.source, kind: message.kind, notify: verdict.notify,
+                                                  reason: verdict.reason, ruleName: candidate.ruleHits.first?.ruleName, now: now())
+                        guard verdict.notify else { return [] }
+                        let snippet = verdict.reason.isEmpty ? message.snippet : "AI：\(verdict.reason)"
+                        if !candidate.ruleHits.isEmpty {
+                            // 沿用规则的名字、声音和强提醒，只把理由换成 AI 的
+                            return candidate.ruleHits.map {
+                                RuleHit(messageId: $0.messageId, threadId: $0.threadId, ruleName: $0.ruleName, subject: $0.subject,
+                                        from: $0.from, snippet: snippet, sound: $0.sound, strong: $0.strong)
+                            }
+                        }
+                        return [RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "AI 判定",
+                                        subject: message.subject, from: message.from, snippet: snippet, sound: nil, strong: false)]
+                    } catch {
+                        return fallbackHits(for: candidate)
+                    }
+                }
+                return true
+            }
+            for _ in 0..<4 where addNext() {}
+            while let found = await group.next() {
+                hits.append(contentsOf: found)
+                _ = addNext()
+            }
+        }
+        lock.withLock { pending.append(contentsOf: hits) }
+    }
+
+    /// AI 不可用时的回退：命中的提醒规则照常通知，没命中规则的按"新邮件通知"设置。
+    private func fallbackHits(for candidate: AICandidate) -> [RuleHit] {
+        if !candidate.ruleHits.isEmpty { return candidate.ruleHits }
+        let message = candidate.message
+        guard newMailAlerts.accepts(kind: message.kind) else { return [] }
+        return [RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "新邮件",
+                       subject: message.subject, from: message.from, snippet: message.snippet, sound: nil, strong: false)]
     }
 
     /// 只提醒收件箱里还没读的、足够新的邮件。
@@ -197,9 +277,16 @@ public final class MailMonitor: @unchecked Sendable {
         set { state.newMailAlerts = newValue }
     }
 
+    /// 设置后，没命中提醒规则的新邮件由 AI 判断要不要通知；nil = 不用 AI。
+    public var aiJudge: AINotifyJudge? {
+        get { state.aiJudge }
+        set { state.aiJudge = newValue }
+    }
+
     public func syncOnce(forceFull: Bool = false) async throws -> MonitorResult {
         let rules = refreshRulesReportingChange()
         let summary = try await engine.sync(forceFull: forceFull)
+        await state.judgeCandidates()
         // 同步失败时已记录的待提醒命中会留到下一次成功时再返回
         return MonitorResult(summary: summary, alerts: state.takeAlerts(), ruleWarning: rules.warning,
                              rulesChanged: rules.changed)

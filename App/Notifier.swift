@@ -22,9 +22,20 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     var onOpenThread: (@MainActor (String?) -> Void)?
     /// 强提醒的命中交给置顶卡片处理
     var onStrongHits: (@MainActor ([RuleHit]) -> Void)?
+    /// 通知上的 👍 / 👎：(邮件 id, 1 或 -1)。AI 判断的通知才有这两个按钮
+    var onFeedback: (@MainActor (String, Int) -> Void)?
+
+    private static let verdictCategory = "AI_VERDICT"
+    private static let usefulAction = "AI_USEFUL"
+    private static let uselessAction = "AI_USELESS"
 
     func start() {
         center.delegate = self
+        center.setNotificationCategories([UNNotificationCategory(
+            identifier: Self.verdictCategory,
+            actions: [UNNotificationAction(identifier: Self.usefulAction, title: "👍 有用", options: []),
+                      UNNotificationAction(identifier: Self.uselessAction, title: "👎 没用", options: [])],
+            intentIdentifiers: [], options: [])])
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             log.info("notification authorization granted=\(granted) error=\(error?.localizedDescription ?? "-")")
         }
@@ -65,16 +76,25 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func postHit(_ hit: RuleHit, useDefaultSound: Bool) {
+        // AI 判断过的（理由以「AI：」开头）带上反馈按钮
+        let judged = hit.snippet.hasPrefix("AI：")
         post(id: "\(hit.messageId)-\(hit.ruleName)", title: "【\(hit.ruleName)】\(MailAddress.parse(hit.from).displayName)",
-             body: hit.subject, threadId: hit.threadId, useDefaultSound: useDefaultSound)
+             body: judged ? "\(hit.subject)\n\(hit.snippet)" : hit.subject, threadId: hit.threadId, useDefaultSound: useDefaultSound,
+             judgedMessageId: judged ? hit.messageId : nil)
     }
 
-    func post(id: String, title: String, body: String, threadId: String?, useDefaultSound: Bool) {
+    func post(id: String, title: String, body: String, threadId: String?, useDefaultSound: Bool, judgedMessageId: String? = nil) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = useDefaultSound ? .default : nil
-        if let threadId { content.userInfo = ["threadId": threadId] }
+        var info: [String: String] = [:]
+        if let threadId { info["threadId"] = threadId }
+        if let judgedMessageId {
+            info["messageId"] = judgedMessageId
+            content.categoryIdentifier = Self.verdictCategory
+        }
+        content.userInfo = info
         center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil)) { error in
             if let error { log.error("post failed: \(error.localizedDescription)") }
         }
@@ -89,8 +109,18 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
-        let threadId = response.notification.request.content.userInfo["threadId"] as? String
-        Task { @MainActor in self.onOpenThread?(threadId) }
+        let info = response.notification.request.content.userInfo
+        let threadId = info["threadId"] as? String
+        switch response.actionIdentifier {
+        case Self.usefulAction, Self.uselessAction:
+            // 只记反馈，不打开应用
+            if let messageId = info["messageId"] as? String {
+                let value = response.actionIdentifier == Self.usefulAction ? 1 : -1
+                Task { @MainActor in self.onFeedback?(messageId, value) }
+            }
+        default:
+            Task { @MainActor in self.onOpenThread?(threadId) }
+        }
         completionHandler()
     }
 }

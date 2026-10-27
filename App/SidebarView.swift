@@ -38,12 +38,6 @@ struct SidebarView: View {
             brand
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.pad(14)) {
-                    section("分诊") {
-                        row(icon: "exclamationmark.bubble.fill", iconColor: Theme.accent, title: "待处理", mailbox: .attention,
-                            badge: reader.stats.attention, badgeColor: Theme.accent)
-                        row(icon: "star.fill", iconColor: Theme.muted, title: "重点", mailbox: .important,
-                            badge: reader.stats.importantUnread, badgeColor: Theme.accent)
-                    }
                     section("来源") {
                         ForEach(ReaderModel.sourceOrder, id: \.self) { source in
                             if let count = reader.inboxSourceCounts[source], count.groups > 0 { sourceRow(source, count) }

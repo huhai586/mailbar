@@ -29,7 +29,7 @@ struct RootView: View {
             }
             StatusBar(service: service, reader: reader)
         }
-        .id("\(fontOffset)|\(uiDensity)|\(fontSet)")   // 字号 / 密度一变就整体重建，所有 Theme.ui / pad 重新取值
+        .id("\(fontOffset)|\(uiDensity)|\(fontSet)|\(appearance)")   // 字号 / 密度一变就整体重建，所有 Theme.ui / pad 重新取值
         .background(Theme.bg)
         .overlay {
             if reader.showPalette {
@@ -80,8 +80,6 @@ private struct StatusBar: View {
             Text(service.statusLine).font(Theme.mono(10.5)).foregroundStyle(Theme.muted).lineLimit(1)
             Spacer()
             Text("未读 \(reader.stats.inboxUnread)").font(Theme.mono(10.5)).foregroundStyle(Theme.muted)
-            Text("重点 \(reader.stats.importantUnread)").font(Theme.mono(10.5))
-                .foregroundStyle(reader.stats.importantUnread > 0 ? Theme.orange : Theme.muted)
             Rectangle().fill(Theme.border).frame(width: 1, height: 12)
             KeyHint(keys: "j/k", label: "移动")
             KeyHint(keys: "m", label: "已读")
@@ -112,5 +110,20 @@ private struct WindowConfigurator: NSViewRepresentable {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
+        installZoomOnDoubleClick(for: window)
+    }
+
+    private static var zoomMonitor: Any?
+
+    /// 标题被隐藏后系统不再处理标题栏双击；这里补上：双击窗口顶部 = 放大到屏幕可用区域（再双击还原），不进入全屏。
+    private static func installZoomOnDoubleClick(for window: NSWindow) {
+        guard zoomMonitor == nil else { return }
+        zoomMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            guard event.clickCount == 2, event.window === window, !window.styleMask.contains(.fullScreen) else { return event }
+            guard event.locationInWindow.y >= window.frame.height - 28 else { return event }
+            if let hit = window.contentView?.hitTest(event.locationInWindow), hit is NSControl || hit is NSText { return event }
+            window.zoom(nil)
+            return nil
+        }
     }
 }

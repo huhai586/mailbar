@@ -186,10 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         image?.isTemplate = true
         statusItem.button?.image = image
         statusItem.button?.appearsDisabled = service.paused
-        // 图标旁边显示未读重点邮件数
-        let important = (try? service.store?.unreadThreadCount(in: .important)) ?? 0
-        statusItem.button?.imagePosition = .imageLeading
-        statusItem.button?.title = important > 0 ? " \(important)" : ""
+        statusItem.button?.title = ""
     }
 
     // MARK: - Actions

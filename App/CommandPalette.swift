@@ -141,12 +141,10 @@ extension ReaderModel {
         }
 
         // 跳转
-        list.append(PaletteCommand(title: "转到 待处理", hint: "分诊", icon: "exclamationmark.bubble.fill") { [self] in select(.attention) })
         for source in Self.sourceOrder {
             let style = Self.style(forSource: source)
             list.append(PaletteCommand(title: "只看 \(style.title == "文档" ? "Google 文档" : style.title)", hint: "来源", icon: style.icon) { [self] in selectSource(source) })
         }
-        list.append(PaletteCommand(title: "转到 重点", hint: "邮箱", icon: "bolt.fill") { [self] in select(.important) })
         for item in SystemMailbox.all {
             list.append(PaletteCommand(title: "转到 \(item.title)", hint: "邮箱", icon: item.icon) { [self] in select(item.mailbox) })
         }

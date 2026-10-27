@@ -150,6 +150,24 @@ public final class MailStore: @unchecked Sendable {
             }
             try db.execute(sql: "DELETE FROM sync_state WHERE key = 'rulesFingerprint'")
         }
+        migrator.registerMigration("v12-group-key-index") { db in
+            // 列表里每一行都要按"分组键"（PR 或会话）回查同组邮件：没有这个表达式索引时是整表扫描，
+            // 邮件一多（尤其是结果行很多的「其他」）切换邮箱就卡
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS message_group_key ON message (COALESCE(prKey, threadId), kind, internalDate)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS rule_match_rule ON rule_match (ruleName, messageId)")
+        }
+        migrator.registerMigration("v13-ai-summary") { db in
+            // AI 线程摘要缓存：按分组（PR 或会话）存一份，最新一封邮件变了就算过期
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS ai_summary (
+                    groupKey TEXT PRIMARY KEY,
+                    latestMessageId TEXT NOT NULL,
+                    json TEXT NOT NULL,
+                    createdAt REAL NOT NULL
+                )
+                """)
+        }
+        registerAssistantMigrations(&migrator)
         return migrator
     }
 

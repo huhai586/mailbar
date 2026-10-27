@@ -9,38 +9,47 @@ enum Theme {
                 blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
     }
 
-    private static func dynamic(_ dark: UInt32, _ light: UInt32, alpha: CGFloat = 1) -> Color {
+    /// 「夜间 / 日间」主题用蓝色系配色；其余（终端 / 纸质 / 跟随系统）用暖色系。
+    static var isDayNight: Bool {
+        let value = UserDefaults.standard.string(forKey: Pref.appearance)
+        return value == "night" || value == "day"
+    }
+
+    private static func dynamic(_ dark: UInt32, _ light: UInt32, night: UInt32? = nil, day: UInt32? = nil, alpha: CGFloat = 1) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? ns(dark, alpha: alpha) : ns(light, alpha: alpha)
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let useAlt = isDayNight
+            let hex = isDark ? (useAlt ? night ?? dark : dark) : (useAlt ? day ?? light : light)
+            return ns(hex, alpha: alpha)
         })
     }
 
     // 两套主题：深色 = 「终端控制台」（暖黑底 + 琥珀招牌色），浅色 = 「纸质」（暖白纸 + 深绿墨色）。
     // 颜色只为"有含义的事"服务：accent = 需要你；red = 出问题；其余都收成灰。
     // 表面
-    static let bg = dynamic(0x16130F, 0xFAF7F1)
-    static let panel = dynamic(0x1D1912, 0xF3EFE6)
-    static let raised = dynamic(0x2A251D, 0xE9E3D6)
-    static let border = dynamic(0x332D22, 0xE0D9CB)
-    static let hover = dynamic(0xFFF1D6, 0x000000, alpha: 0.04)
-    static let selection = dynamic(0xF5A524, 0x2F5D46, alpha: 0.16)
+    static let bg = dynamic(0x16130F, 0xFAF7F1, night: 0x0B1020, day: 0xF7F9FC)
+    static let panel = dynamic(0x1D1912, 0xF3EFE6, night: 0x111833, day: 0xEEF2F8)
+    static let raised = dynamic(0x2A251D, 0xE9E3D6, night: 0x1B2444, day: 0xE3E9F3)
+    static let border = dynamic(0x332D22, 0xE0D9CB, night: 0x252F52, day: 0xD5DCE8)
+    static let hover = dynamic(0xFFF1D6, 0x000000, night: 0xFFFFFF, day: 0x000000, alpha: 0.04)
+    static let selection = dynamic(0xF5A524, 0x2F5D46, night: 0x5B9DFF, day: 0x1F6FEB, alpha: 0.16)
 
     // 文字
-    static let text = dynamic(0xE9E3D6, 0x1F1D19)
-    static let muted = dynamic(0x8A8273, 0x6B665A)
-    static let faint = dynamic(0x6F6858, 0x8B8577)
+    static let text = dynamic(0xE9E3D6, 0x1F1D19, night: 0xDDE4F5, day: 0x1B2333)
+    static let muted = dynamic(0x8A8273, 0x6B665A, night: 0x8190B5, day: 0x5B6780)
+    static let faint = dynamic(0x6F6858, 0x8B8577, night: 0x626F94, day: 0x8190A8)
 
     // 语义色
-    static let accent = dynamic(0xF5A524, 0x2F5D46)
-    static let red = dynamic(0xFF5F4A, 0xB3402A)
-    static let orange = dynamic(0xE8803A, 0xB5651D)
-    static let yellow = dynamic(0xD9B44A, 0x8F6B12)
-    static let green = dynamic(0x7FB069, 0x4A7A3A)
-    static let cyan = dynamic(0x5FB3A8, 0x2D7A78)
-    static let blue = dynamic(0x7AA2C8, 0x3B6A8F)
-    static let purple = dynamic(0xB59AE0, 0x6B4FA0)
-    static let pink = dynamic(0xE58AB0, 0xA83E6B)
-    static let gray = dynamic(0x8A8273, 0x7A756A)
+    static let accent = dynamic(0xF5A524, 0x2F5D46, night: 0x5B9DFF, day: 0x1F6FEB)
+    static let red = dynamic(0xFF5F4A, 0xB3402A, night: 0xFF6B7A, day: 0xD1383D)
+    static let orange = dynamic(0xE8803A, 0xB5651D, night: 0xFFA05A, day: 0xC2620F)
+    static let yellow = dynamic(0xD9B44A, 0x8F6B12, night: 0xE6C65C, day: 0x9A6B00)
+    static let green = dynamic(0x7FB069, 0x4A7A3A, night: 0x5FCB8C, day: 0x1F8A4C)
+    static let cyan = dynamic(0x5FB3A8, 0x2D7A78, night: 0x4FD1E0, day: 0x0E7C86)
+    static let blue = dynamic(0x7AA2C8, 0x3B6A8F, night: 0x6FA8FF, day: 0x2563C9)
+    static let purple = dynamic(0xB59AE0, 0x6B4FA0, night: 0xA78BFA, day: 0x6E4BC2)
+    static let pink = dynamic(0xE58AB0, 0xA83E6B, night: 0xF27CB0, day: 0xB83280)
+    static let gray = dynamic(0x8A8273, 0x7A756A, night: 0x8190B5, day: 0x6B778C)
 
     static func color(named name: String) -> Color {
         switch name {
@@ -115,8 +124,8 @@ enum Theme {
 }
 
 extension View {
-    /// 设置里的外观：深色 / 浅色 / 跟随系统。
+    /// 设置里的主题：终端（深）/ 纸质（浅）/ 夜间（深）/ 日间（浅）/ 跟随系统。
     func applyAppearance(_ value: String) -> some View {
-        preferredColorScheme(value == "dark" ? .dark : (value == "light" ? .light : nil))
+        preferredColorScheme(["dark", "night"].contains(value) ? .dark : (["light", "day"].contains(value) ? .light : nil))
     }
 }

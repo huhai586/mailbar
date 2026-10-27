@@ -115,6 +115,9 @@ private struct ThreadConversation: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Theme.pad(10)) {
+                        if let key = reader.selectedThreadID {
+                            AISummaryCard(reader: reader, groupKey: key, messages: messages, title: subject)
+                        }
                         if shownMessages.isEmpty {
                             Text("这一类里没有邮件").font(Theme.ui(12.5)).foregroundStyle(Theme.faint).padding(.top, 40)
                         }

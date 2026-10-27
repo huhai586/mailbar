@@ -184,6 +184,7 @@ private enum Sample {
             try s.upsert([msg("h", pr: 50, from: "Kevin", body: Sample.human, date: 1000),
                           msg("r", pr: 50, from: "\"sonarqubecloud[bot]\"", body: Sample.qualityPassed, date: 2000)])
             try s.db.write { db in
+                try db.execute(sql: "DROP INDEX message_group_key")   // 依赖 kind 列，先删
                 try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'v5-source'")
                 try db.execute(sql: "DROP INDEX message_source")
                 try db.execute(sql: "DROP INDEX message_kind")

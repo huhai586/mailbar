@@ -235,3 +235,109 @@ private let alertRules = """
         #expect(!NewMailAlerts.off.accepts(kind: "human"))
     }
 }
+
+private struct FakeChat: AIChat {
+    let reply: @Sendable (String) throws -> String
+    func complete(system: String, user: String) async throws -> String { try reply(user) }
+}
+
+@Suite struct AINotifyMonitorTests {
+    private func judge(_ reply: @escaping @Sendable (String) throws -> String) -> AINotifyJudge {
+        AINotifyJudge(chat: FakeChat(reply: reply), prompt: "p")
+    }
+
+    @Test func aiDecidesWhichNewMailsNotify() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.aiJudge = judge { user in
+            user.contains("urgent") ? #"{"notify": true, "reason": "要紧"}"# : #"{"notify": false, "reason": "无关"}"#
+        }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "urgent question")
+        h.api.add("q", subject: "lunch?")
+        h.api.add("r", subject: "磁盘告警")
+        let result = try await h.monitor.syncOnce()
+        let byId = Dictionary(uniqueKeysWithValues: result.alerts.map { ($0.messageId, $0) })
+        #expect(byId["p"]?.ruleName == "AI 判定")
+        #expect(byId["p"]?.snippet == "AI：要紧")
+        #expect(byId["q"] == nil)
+        #expect(byId["r"] == nil)      // 命中规则也要听 AI 的：AI 说不通知就不通知
+        #expect(result.alerts.count == 1)
+    }
+
+    @Test func ruleMailApprovedByAIKeepsRuleSoundAndName() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.aiJudge = judge { _ in #"{"notify": true, "reason": "线上告警"}"# }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("r", subject: "磁盘告警")
+        let alert = try #require(try await h.monitor.syncOnce().alerts.first)
+        #expect(alert.ruleName == "告警")
+        #expect(alert.sound == "Sosumi")
+        #expect(alert.snippet == "AI：线上告警")
+    }
+
+    @Test func ruleMailFallsBackToRuleWhenAIFails() async throws {
+        struct Boom: Error {}
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.aiJudge = judge { _ in throw Boom() }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("r", subject: "磁盘告警")
+        let alerts = try await h.monitor.syncOnce().alerts
+        #expect(alerts.map(\.ruleName) == ["告警"])
+    }
+
+    @Test func aiFailureFallsBackToNewMailSetting() async throws {
+        struct Boom: Error {}
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.newMailAlerts = .all
+        h.monitor.aiJudge = judge { _ in throw Boom() }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "hello")
+        #expect(try await h.monitor.syncOnce().alerts.map(\.ruleName) == ["新邮件"])
+
+        h.monitor.newMailAlerts = .off
+        h.api.add("q", subject: "hello again")
+        #expect(try await h.monitor.syncOnce().alerts.isEmpty)
+    }
+
+    @Test func unparsableReplyCountsAsFailure() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.newMailAlerts = .all
+        h.monitor.aiJudge = judge { _ in "我觉得应该通知" }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "hello")
+        #expect(try await h.monitor.syncOnce().alerts.map(\.ruleName) == ["新邮件"])
+    }
+
+    @Test func everyVerdictIsRecordedAndCorrectionsReachTheNextPrompt() async throws {
+        final class Seen: @unchecked Sendable { var systems: [String] = [] }
+        struct Spy: AIChat {
+            let seen: Seen
+            func complete(system: String, messages: [AIMessage]) async throws -> String {
+                seen.systems.append(system)
+                return #"{"notify": true, "reason": "原因"}"#
+            }
+        }
+        let seen = Seen()
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.aiJudge = AINotifyJudge(chat: Spy(seen: seen), prompt: "P")
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "hello there")
+        _ = try await h.monitor.syncOnce()
+        let decision = try #require(try h.store.recentDecisions().first)
+        #expect(decision.messageId == "p" && decision.notify && decision.reason == "原因" && decision.subject == "hello there")
+
+        try h.store.setFeedback(messageId: "p", value: -1)
+        try h.store.addMemory("别烦我")
+        h.api.add("q", subject: "another")
+        _ = try await h.monitor.syncOnce()
+        let last = try #require(seen.systems.last)
+        #expect(last.contains("别烦我") && last.contains("hello there"))
+    }
+
+    @Test func noJudgeKeepsOldBehaviour() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "hello")
+        #expect(try await h.monitor.syncOnce().alerts.isEmpty)
+    }
+}

@@ -25,6 +25,8 @@
 		59B23BF71B468C818CBBF745 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA0749059264A2FC2238246 /* SidebarView.swift */; };
 		5D29D91F0A897EB1E3DD6E18 /* ThreadListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */; };
 		7587BE04F8E2A20C84D91488 /* Notifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5C646E35599E76FA6378AC /* Notifier.swift */; };
+		760107273BC70C54262C4BA7 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856DB34509EA4B91185556A8 /* AISettingsView.swift */; };
+		768B4A645BBBFFDC90EAFDC0 /* AssistantViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7DD726315B0D3ECBC5C95C0 /* AssistantViews.swift */; };
 		7B447E3DA704785F87D5E3A0 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B157A46922C63138444D3 /* DashboardView.swift */; };
 		82B986952BDB18E125D5EF3C /* RulesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659948E83F048F8C1E01F23F /* RulesSettingsView.swift */; };
 		85814D486B1456E4DCDEF1FA /* StrongAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */; };
@@ -32,6 +34,7 @@
 		9936F6ECC118F924A5B24907 /* CommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */; };
 		9F3E99B8F0E794389950F689 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */; };
 		A6A7C5DD9321268891CD3750 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */; };
+		A7BEEA279D4777329EF2E048 /* TodoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7EBFBEBA65399DBF70C6D9 /* TodoViews.swift */; };
 		A844A6CB6F2833D8AD907865 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */; };
 		B4EB3A4D2FFC6779466E15A3 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D309B25F7B6E4597AAD4F658 /* RootView.swift */; };
 		B906FD99FE6B2B6F6AB0464F /* MailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 780C48AB7356AEC0B4C782DF /* MailCore */; };
@@ -41,6 +44,7 @@
 		C7B58777D1B14253FB5EDC0B /* ReaderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */; };
 		CC93E1712C36D3ABA9B5F77B /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D035DBFEE3C21BBCD6CE9970 /* MailService.swift */; };
 		CC9409782268101CEA5A6E5B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */; };
+		CD4F7F80639B8C954553817C /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20475B95CCA861DA6B39AB80 /* AssistantService.swift */; };
 		CDBD7EB591749462BF51DC5E /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4529AFD57AE81A83CE924D50 /* JetBrainsMono-Regular.ttf */; };
 		D290692AF7E325158404167F /* Prefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2383F8184966C06DE1BA8146 /* Prefs.swift */; };
 		E2B10F72C6365AD4ADC5DDB2 /* FontSets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338B267837EA86DA046B5C05 /* FontSets.swift */; };
@@ -53,6 +57,7 @@
 		0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.ttf"; sourceTree = "<group>"; };
 		0DDD78534B9CBD45B5443A79 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		1180DCE4D53BBECB1E90113C /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		20475B95CCA861DA6B39AB80 /* AssistantService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantService.swift; sourceTree = "<group>"; };
 		20A9C06A4FA9DC10BD95909A /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
 		213527931496F0FC1A4EAD36 /* Mailboxes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mailboxes.swift; sourceTree = "<group>"; };
 		216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -70,6 +75,7 @@
 		6838F5CC960F93B58099A9D8 /* BrandIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandIcons.swift; sourceTree = "<group>"; };
 		6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		807DD8561D1F00650EDBE0FD /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		856DB34509EA4B91185556A8 /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
 		88EB400AA4BA9B7E4B17835C /* RichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichText.swift; sourceTree = "<group>"; };
 		907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
@@ -78,6 +84,7 @@
 		AB2B157A46922C63138444D3 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongAlertCenter.swift; sourceTree = "<group>"; };
 		C2EB5D43876C809426AC7EA9 /* mail */ = {isa = PBXFileReference; lastKnownFileType = folder; name = mail; path = .; sourceTree = SOURCE_ROOT; };
+		C7DD726315B0D3ECBC5C95C0 /* AssistantViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantViews.swift; sourceTree = "<group>"; };
 		CEFA1DE80CCB00DED4E5F9D5 /* MailBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MailBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D035DBFEE3C21BBCD6CE9970 /* MailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailService.swift; sourceTree = "<group>"; };
 		D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadDetailView.swift; sourceTree = "<group>"; };
@@ -85,6 +92,7 @@
 		E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadListView.swift; sourceTree = "<group>"; };
 		E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
 		EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderModel.swift; sourceTree = "<group>"; };
+		EC7EBFBEBA65399DBF70C6D9 /* TodoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoViews.swift; sourceTree = "<group>"; };
 		ED779ECEABEA8A866B472D46 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F4292DD78F2DC9593621739F /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
 		F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
@@ -105,8 +113,11 @@
 		3A02B5A167C90BE536A6970A /* App */ = {
 			isa = PBXGroup;
 			children = (
+				856DB34509EA4B91185556A8 /* AISettingsView.swift */,
 				216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */,
 				A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */,
+				20475B95CCA861DA6B39AB80 /* AssistantService.swift */,
+				C7DD726315B0D3ECBC5C95C0 /* AssistantViews.swift */,
 				6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */,
 				AB2B157A46922C63138444D3 /* DashboardView.swift */,
 				A4E1B89E529222E6E550D764 /* HTMLBodyView.swift */,
@@ -125,6 +136,7 @@
 				B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */,
 				D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */,
 				E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */,
+				EC7EBFBEBA65399DBF70C6D9 /* TodoViews.swift */,
 				EFFCA30124573A4E56629D5D /* Fonts */,
 				3CBE47BC6363D7136C5291D0 /* Theme */,
 			);
@@ -276,7 +288,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				760107273BC70C54262C4BA7 /* AISettingsView.swift in Sources */,
 				CC9409782268101CEA5A6E5B /* AppDelegate.swift in Sources */,
+				CD4F7F80639B8C954553817C /* AssistantService.swift in Sources */,
+				768B4A645BBBFFDC90EAFDC0 /* AssistantViews.swift in Sources */,
 				20848FAAE313E9901D38DFD5 /* BrandIcons.swift in Sources */,
 				9936F6ECC118F924A5B24907 /* CommandPalette.swift in Sources */,
 				2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */,
@@ -300,6 +315,7 @@
 				E952C2F9599B4B5156788FE7 /* Theme.swift in Sources */,
 				4C87F227D0FE569E367BEA17 /* ThreadDetailView.swift in Sources */,
 				5D29D91F0A897EB1E3DD6E18 /* ThreadListView.swift in Sources */,
+				A7BEEA279D4777329EF2E048 /* TodoViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,7 +329,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -322,7 +338,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.11;
+				MARKETING_VERSION = 0.4.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = MailBar;
 				SDKROOT = macosx;
@@ -337,7 +353,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -346,7 +362,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.11;
+				MARKETING_VERSION = 0.4.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = MailBar;
 				SDKROOT = macosx;
