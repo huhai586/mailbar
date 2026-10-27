@@ -47,6 +47,7 @@ private struct GeneralSettingsView: View {
     @AppStorage(Pref.markReadWholeThread) private var wholeThread = true
     @AppStorage(Pref.groupByPR) private var groupByPR = true
     @AppStorage(Pref.githubLogin) private var githubLogin = ""
+    @AppStorage(Pref.jiraName) private var jiraName = ""
     @AppStorage(Pref.sidebarShown) private var shownRaw = "UNREAD,ALL"
     @State private var allLabels: [LabelInfo] = []
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -84,6 +85,8 @@ private struct GeneralSettingsView: View {
             Section("列表") {
                 TextField("GitHub 用户名", text: $githubLogin, prompt: Text("留空自动识别\(detectedLoginHint)"))
                 Text("用来判断一封邮件有没有真的 @ 你。机器人报告里常写 “Triggered by @你”，GitHub 会因此把整个 PR 之后的邮件都标成“提及”；只有真人写的、并且正文里确实有 @ 你的才会显示「提及你」。").font(.caption).foregroundStyle(.secondary)
+                TextField("Jira 显示名", text: $jiraName, prompt: Text("例如 Howard Hu"))
+                Text("你在 Jira 里被 @ 时显示的名字。Jira 邮件的正文里出现这个名字，才会显示可点击的「提到你」，点击跳到对应的那封邮件；留空则所有 Jira「提到你」都算。").font(.caption).foregroundStyle(.secondary)
                 Toggle("按 PR 聚合", isOn: $groupByPR)
                 Text("同一个 PR 的评论、推送、CI 结果、Jira 联动合成一行；关闭后按 Gmail 会话逐条列出。列表顶部的「会话 | PR」和快捷键 p 也可随时切换。").font(.caption).foregroundStyle(.secondary)
             }
@@ -246,7 +249,7 @@ private struct AlertSettingsView: View {
 private struct AccountSettingsView: View {
     @ObservedObject var service: MailService
     @AppStorage(Pref.initialSyncLimit) private var initialLimit = 500
-    @AppStorage(Pref.loadOlderBatch) private var olderBatch = 500
+    @AppStorage(Pref.loadOlderBatch) private var olderBatch = 50
     @State private var confirmResync = false
     @State private var confirmSignOut = false
     @State private var clientResult: (ok: Bool, message: String)?
@@ -324,14 +327,14 @@ private struct AccountSettingsView: View {
                 }
                 HStack {
                     Picker("向前加载", selection: $olderBatch) {
-                        ForEach([200, 500, 1000, 2000], id: \.self) { Text("\($0) 封").tag($0) }
+                        ForEach([50, 100, 200, 500, 1000], id: \.self) { Text("\($0) 封").tag($0) }
                     }
                     Button(service.loadingOlder ? "加载中…" : "加载更早的邮件") {
                         Task { await service.loadOlder(count: olderBatch) }
                     }
                     .disabled(service.loadingOlder)
                 }
-                Text("受 Gmail 配额限制，大约每分钟能拉 100 封，数量大时需要等一会儿。").font(.caption).foregroundStyle(.secondary)
+                Text("列表滚到底会自动按这个数量继续加载更早的邮件。受 Gmail 配额限制，大约每分钟能拉 100 封，数量大时需要等一会儿。").font(.caption).foregroundStyle(.secondary)
                 Button("按上面的数量重新完整同步…") { confirmResync = true }
                     .disabled(service.syncing)
             }

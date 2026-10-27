@@ -20,6 +20,8 @@ final class MailService: ObservableObject {
     @Published private(set) var paused = false
     @Published private(set) var syncing = false
     @Published private(set) var loadingOlder = false
+    /// 上一次"加载更早的邮件"没拉到新邮件：说明已经到头了
+    @Published private(set) var noMoreOlder = false
     @Published private(set) var loginRequired = false
     @Published private(set) var hasUnseenHits = false
     @Published private(set) var setupError: String?
@@ -228,8 +230,10 @@ final class MailService: ObservableObject {
         loadingOlder = true
         defer { loadingOlder = false }
         do {
-            let target = ((try? store.messageCount()) ?? 0) + count
-            _ = try await monitor.loadOlder(limit: target)
+            let before = (try? store.messageCount()) ?? 0
+            _ = try await monitor.loadOlder(limit: before + count)
+            // 一封都没多出来 = 邮箱里已经没有更早的了；列表滚到底的自动加载据此停下，不会反复请求
+            noMoreOlder = ((try? store.messageCount()) ?? 0) <= before
             revision += 1
             lastError = nil
         } catch {
@@ -247,6 +251,7 @@ final class MailService: ObservableObject {
         reasonBackfillDone = false
         syncing = true
         defer { syncing = false }
+        noMoreOlder = false
         do {
             _ = try await monitor?.syncOnce(forceFull: true)
             lastSync = Date()

@@ -24,6 +24,67 @@ struct Chip: View {
     }
 }
 
+/// 可点击的标签：链接蓝 + 下划线 + 右上箭头，悬停时加深并变成手型指针；和普通标签一眼能分开。
+struct LinkChip: View {
+    let text: String
+    let url: URL
+    var icon: String?
+    var help: String?
+    @State private var hovering = false
+
+    var body: some View {
+        Button { NSWorkspace.shared.open(url) } label: {
+            HStack(spacing: 3) {
+                if let icon { Image(systemName: icon).font(.system(size: 8, weight: .bold)) }
+                Text(text).underline().lineLimit(1)
+                Image(systemName: "arrow.up.right").font(.system(size: 7, weight: .bold))
+            }
+            .font(Theme.mono(10.5, .medium))
+            .foregroundStyle(Theme.accent)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(Theme.accent.opacity(hovering ? 0.28 : 0.12), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.accent.opacity(hovering ? 0.9 : 0.55), lineWidth: 0.8))
+            .fixedSize()
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .pointerStyle(.link)
+        .help(help ?? "在浏览器中打开 \(url.absoluteString)")
+    }
+}
+
+/// 点一下在页面里跳转的标签（如"被 @ 提及"）：保持自己的颜色，但带下划线、跳转图标、手型指针和悬停加深，表示可点。
+struct JumpChip: View {
+    let text: String
+    var color: Color
+    var badge: String?
+    var help: String?
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Text(text).underline().lineLimit(1)
+                if let badge { Text(badge).font(Theme.mono(9.5, .semibold)).opacity(0.85) }
+                Image(systemName: "arrow.down.right").font(.system(size: 7, weight: .bold))
+            }
+            .font(Theme.ui(10.5, .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(color.opacity(hovering ? 0.30 : 0.13), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(color.opacity(hovering ? 0.95 : 0.6), lineWidth: 0.8))
+            .fixedSize()
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .pointerStyle(.link)
+        .help(help ?? "")
+    }
+}
+
 /// 发件人头像：首字母 + 按名字稳定取色。
 struct Avatar: View {
     let name: String

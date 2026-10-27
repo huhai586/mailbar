@@ -22,6 +22,7 @@ enum Pref {
     static let landing = "landingMailbox"        // 启动时先看哪里：attention（待处理）/ inbox（收件箱）
     static let autoCleanRoutine = "autoCleanRoutine"  // 自动把例行机器人邮件标为已读
     static let groupByPR = "groupByPR"            // 列表按 PR 聚合（评论、CI、Jira 联动合成一行）
+    static let jiraName = "jiraName"              // 你在 Jira 里的显示名（@Howard Hu）；用来判断 Jira 邮件有没有提到你
     static let githubLogin = "githubLogin"        // 你的 GitHub 用户名；留空则自动识别
     static let sidebarShown = "sidebarShown"      // 侧栏显示哪些邮箱 / 标签（逗号分隔：UNREAD、ALL 或 Gmail 标签 id）
     // 通用
@@ -62,6 +63,7 @@ enum Pref {
         landing: "attention",
         sidebarShown: "UNREAD,ALL",
         githubLogin: "",
+        jiraName: "",
         autoCleanRoutine: false,
         renderMarkdown: true,
         githubTextView: true,
@@ -81,7 +83,7 @@ enum Pref {
         strongBounceDock: true,
         strongSound: "Sosumi",
         initialSyncLimit: 500,
-        loadOlderBatch: 500,
+        loadOlderBatch: 50,
         settingsTab: "general",
         canModifyCache: false,
     ]

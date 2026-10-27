@@ -98,6 +98,12 @@ final class ReaderModel: ObservableObject {
         return manual.isEmpty ? detectedLogin : manual.trimmingCharacters(in: CharacterSet(charactersIn: "@"))
     }
 
+    /// 设置里填的 Jira 显示名（去掉开头的 @）；没填返回 nil。
+    var jiraName: String? {
+        let name = (UserDefaults.standard.string(forKey: Pref.jiraName) ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "@ ").union(.whitespaces))
+        return name.isEmpty ? nil : name
+    }
+
     /// 来源的显示顺序和样式。
     static let sourceOrder = ["github", "jira", "googleDocs", "other"]
     static func style(forSource source: String) -> (title: String, icon: String, color: String) {

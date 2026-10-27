@@ -190,6 +190,15 @@ struct SidebarView: View {
                     }
                 }
                 Spacer()
+                Button { service.manualSync() } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .rotationEffect(.degrees(service.syncing ? 360 : 0))
+                        .animation(service.syncing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: service.syncing)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(service.syncing ? Theme.accent : Theme.muted)
+                .pointerStyle(.link)
+                .help("立即收取邮件（⌘R）")
                 Button { service.openSettings?("general") } label: { Image(systemName: "gearshape") }
                     .buttonStyle(.plain)
                     .foregroundStyle(Theme.muted)

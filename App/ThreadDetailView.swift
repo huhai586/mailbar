@@ -31,6 +31,12 @@ private struct ThreadConversation: View {
     @State private var expanded: Set<String> = []
     @State private var showAllOlder = false
     @State private var didInitExpansion = false
+    /// 下一次点"被 @ 提及"要跳到第几处；scrollRequest 的 nonce 保证连续跳同一封也会触发滚动
+    @State private var mentionCursor = 0
+    @State private var scrollRequest: (id: String, nonce: Int)?
+    @State private var flashID: String?
+    /// 打开会话时要定位到的那封（最早的未读）；没有未读就用第一封展开的
+    @State private var focusTarget: String?
 
     private var messages: [MessageDetail] { reader.messages }
     private var filter: DetailFilter { reader.detailFilters[reader.selectedThreadID ?? ""] ?? DetailFilter() }
@@ -42,6 +48,8 @@ private struct ThreadConversation: View {
     private func setFilter(_ f: DetailFilter) { if let id = reader.selectedThreadID { reader.detailFilters[id] = f } }
     private var subject: String { messages.last?.subject ?? "" }
     private var info: NotificationInfo? { reader.primaryInfo }
+    /// 侧栏正在看的规则：每封都命中它，头部不用再重复显示
+    private var viewingRule: String? { if case .rule(let name) = reader.mailbox { return name } else { return nil } }
     private var matchedRules: [Rule] {
         let names = Set(reader.selectedThread?.ruleNames ?? [])
         return service.rules.filter { names.contains($0.name) }
@@ -82,7 +90,8 @@ private struct ThreadConversation: View {
             run = []
         }
         // 只看某一类时不折叠，逐条列出
-        let fold = filter.tab == .all
+        // 整个会话都是例行机器人消息（比如单独一封 SonarQube 通知）时也不折叠：折成一行就没有详情可看了
+        let fold = filter.tab == .all && shownMessages.contains { $0.messageKind != .botRoutine }
         for message in shownMessages {
             if fold, message.messageKind == .botRoutine {
                 run.append(message)
@@ -115,6 +124,7 @@ private struct ThreadConversation: View {
                                             onSetKind: { service.setKind(forSender: MailAddress.parse(message.from).address, $0) },
                                             githubLogin: reader.githubLogin,
                                             expanded: binding(message.id))
+                                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).stroke(Theme.orange, lineWidth: 1.5).opacity(flashID == message.id ? 1 : 0))
                                     .id(message.id)
                             case .routine(let run):
                                 RoutineRunRow(messages: run, info: { reader.info(for: $0) })
@@ -135,10 +145,19 @@ private struct ThreadConversation: View {
                     .padding(.vertical, 16)
                     .frame(maxWidth: .infinity)
                 }
-                .onAppear {
-                    initExpansion()
-                    if let target = firstExpandedAfterFold() {
-                        DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
+                .onChange(of: scrollRequest?.nonce) {
+                    guard let id = scrollRequest?.id else { return }
+                    // 等展开 / 切换 tab 之后的布局完成再滚
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                        withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo(id, anchor: .top) }
+                    }
+                }
+                .onAppear { focusInitial(proxy) }
+                // 切换会话时 messages 可能比视图晚一拍更新：这时展开集合里全是上一个会话的邮件 id，一封都对不上，要重新来一遍
+                .onChange(of: messages.map(\.id)) {
+                    if expanded.isDisjoint(with: Set(messages.map(\.id))) {
+                        didInitExpansion = false
+                        focusInitial(proxy)
                     }
                 }
             }
@@ -201,15 +220,30 @@ private struct ThreadConversation: View {
                 set: { if $0 { expanded.insert(id) } else { expanded.remove(id) } })
     }
 
+    private func focusInitial(_ proxy: ScrollViewProxy) {
+        initExpansion()
+        // 目标被"折叠中间 N 封"藏起来时先展开折叠，不然滚不到
+        if let id = focusTarget, !items.contains(where: { if case .message(let m) = $0 { return m.id == id } else { return false } }) {
+            showAllOlder = true
+        }
+        if let target = focusTarget ?? firstExpandedAfterFold() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { proxy.scrollTo(target, anchor: .top) }
+        }
+    }
+
     /// 默认展开最新一封非例行的邮件，以及最近几封未读的（例行消息折在一起，不算）。
     private func initExpansion() {
         guard !didInitExpansion else { return }
         didInitExpansion = true
-        let relevant = messages.filter { $0.messageKind != .botRoutine }
+        let nonRoutine = messages.filter { $0.messageKind != .botRoutine }
+        let relevant = nonRoutine.isEmpty ? messages : nonRoutine
         var open: Set<String> = []
         if let last = relevant.last { open.insert(last.id) }
-        for message in relevant.reversed().filter(\.isUnread).prefix(3) { open.insert(message.id) }
+        // 从列表点进来是为了看新邮件：展开最近的几封未读（最多 5 封），并滚到其中最早的一封
+        let unread = Array(relevant.filter(\.isUnread).suffix(5))
+        for message in unread { open.insert(message.id) }
         expanded = open
+        focusTarget = unread.first?.id
     }
 
     private func firstExpandedAfterFold() -> String? {
@@ -249,24 +283,42 @@ private struct ThreadConversation: View {
             }
             FlowLayout(spacing: 5, lineSpacing: 4) {
                 if let info {
-                    Chip(text: info.context ?? info.service.displayName, color: serviceColor, icon: ReaderModel.icon(for: info.service))
-                    if let reference = info.reference { Chip(text: reference, color: serviceColor) }
+                    let context = info.context ?? info.service.displayName
+                    if info.service == .github, let context = info.context, let url = URL(string: "https://github.com/\(context)") {
+                        LinkChip(text: context, url: url, icon: ReaderModel.icon(for: info.service), help: "在 GitHub 中打开仓库 \(context)")
+                    } else {
+                        Chip(text: context, color: serviceColor, icon: ReaderModel.icon(for: info.service))
+                    }
+                    if let reference = info.reference {
+                        if let link {
+                            LinkChip(text: reference, url: link.url, help: "在 \(link.name) 中打开 \(reference)")
+                        } else {
+                            Chip(text: reference, color: serviceColor)
+                        }
+                    }
                     if info.service == .github, let key = info.jiraKey {
                         // PR 标题里的 Jira 编号：点一下跳到 Jira 工单
                         if let url = reader.jiraURL(forKey: key) {
-                            Button { NSWorkspace.shared.open(url) } label: { Chip(text: key, color: Theme.color(for: .jira), icon: "checklist") }
-                                .buttonStyle(.plain).help("在 Jira 中打开 \(key)")
+                            LinkChip(text: key, url: url, icon: "checklist", help: "在 Jira 中打开 \(key)")
                         } else {
                             Chip(text: key, color: Theme.color(for: .jira), icon: "checklist")
                         }
                     }
                 }
-                ForEach(matchedRules, id: \.name) { rule in
-                    Chip(text: rule.name, color: Theme.color(for: rule), filled: Theme.priority(of: rule) == 3, mono: false)
+                ForEach(matchedRules.filter { $0.name != viewingRule }, id: \.name) { rule in
+                    if isMentionRule(rule), !mentionIDs.isEmpty {
+                        mentionChip(rule.name, color: Theme.color(for: rule))
+                    } else {
+                        Chip(text: rule.name, color: Theme.color(for: rule), filled: Theme.priority(of: rule) == 3, mono: false)
+                    }
                 }
                 if ciFailures > 0 { Chip(text: "CI 失败 ×\(ciFailures)", color: Theme.red, mono: false) }
                 if matchedRules.isEmpty, let event = info?.event, ciFailures == 0 || event.label != "CI 失败" {
-                    Chip(text: event.label, color: Theme.color(named: event.color), mono: false)
+                    if ["提及你", "团队提及", "提到你"].contains(event.label), !mentionIDs.isEmpty {
+                        mentionChip(event.label, color: Theme.color(named: event.color))
+                    } else {
+                        Chip(text: event.label, color: Theme.color(named: event.color), mono: false)
+                    }
                 }
             }
             Text(metaLine).font(Theme.mono(11)).foregroundStyle(Theme.faint).lineLimit(1)
@@ -277,6 +329,50 @@ private struct ThreadConversation: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.panel)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
+    }
+
+    // MARK: 被 @ 提及
+
+    /// 真正 @ 到你的邮件（按时间顺序）。机器人邮件里的"提及"不算，见 GitHubReason.describesThisMessage。
+    private var mentionIDs: [String] {
+        let mentioned = messages.filter { $0.reason == "mention" || $0.reason == "team_mention" }
+        let exact = mentioned.filter {
+            GitHubReason.describesThisMessage(reason: $0.reason, body: $0.bodyText, kind: $0.messageKind, login: reader.githubLogin)
+        }
+        // 正文里找不到 @你（比如团队提及、GitHub 的判断和用户名不一致）时，退而求其次：GitHub 标成提及的真人邮件
+        let github = exact.isEmpty ? mentioned.filter { $0.messageKind == .human } : exact
+        // Jira / 文档没有 X-GitHub-Reason：按每封邮件自己的识别结果（"X mentioned you"）找
+        let events = messages.filter { reader.info(for: $0)?.event?.label == "提到你" }
+        let named = reader.jiraName.map { name in events.filter { $0.bodyText.range(of: name, options: .caseInsensitive) != nil } } ?? []
+        let others = named.isEmpty ? events : named
+        let ids = Set(github.map(\.id) + others.map(\.id))
+        return messages.map(\.id).filter(ids.contains)
+    }
+
+    private func isMentionRule(_ rule: Rule) -> Bool {
+        rule.reasons.contains { $0.contains("mention") } || rule.name.contains("提到") || rule.name.contains("提及")
+            || rule.keywords.contains { $0.lowercased().contains("mentioned you") }
+    }
+
+    private func mentionChip(_ title: String, color: Color) -> some View {
+        let ids = mentionIDs
+        let next = mentionCursor % ids.count
+        return JumpChip(text: title, color: color, badge: ids.count > 1 ? "\(next + 1)/\(ids.count)" : nil,
+                        help: ids.count > 1 ? "跳到第 \(next + 1) 处提及（共 \(ids.count) 处），再点跳到下一处" : "跳到提及你的那封邮件") {
+            jumpToMention(ids[next])
+            mentionCursor = next + 1
+        }
+    }
+
+    private func jumpToMention(_ id: String) {
+        guard let message = messages.first(where: { $0.id == id }) else { return }
+        // 当前 tab 里看不到这封（比如在"自动化"）就回到"全部"
+        if !filter.includes(message.messageKind) { setFilter(DetailFilter()) }
+        showAllOlder = true
+        expanded.insert(id)
+        scrollRequest = (id, (scrollRequest?.nonce ?? 0) + 1)
+        flashID = id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { if flashID == id { flashID = nil } }
     }
 
     private var metaLine: String {

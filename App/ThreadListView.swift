@@ -4,7 +4,7 @@ import SwiftUI
 struct ThreadListView: View {
     @ObservedObject var reader: ReaderModel
     @ObservedObject var service: MailService
-    @AppStorage(Pref.loadOlderBatch) private var olderBatch = 500
+    @AppStorage(Pref.loadOlderBatch) private var olderBatch = 50
     @AppStorage(Pref.listDensity) private var density = "compact"
     @AppStorage(Pref.showSnippets) private var showSnippets = true
     @FocusState private var searchFocused: Bool
@@ -39,7 +39,8 @@ struct ThreadListView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Theme.muted)
-                .help("立即同步（⌘R）")
+                .pointerStyle(.link)
+                .help("立即收取邮件（⌘R）")
             }
             sourceTabs
             HStack(spacing: 6) {
@@ -150,6 +151,7 @@ struct ThreadListView: View {
                             if !collapsed {
                                 ForEach(section.threads) { thread in
                                     ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
+                                              viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
                                               compact: density == "compact", showSnippet: showSnippets)
                                         .id(thread.id)
                                         .onTapGesture {
@@ -210,19 +212,30 @@ struct ThreadListView: View {
         return .handled
     }
 
+    /// 列表滚到底（这一行进入视野）就自动再拉一批；已经到头了就只显示提示。
     private var olderFooter: some View {
-        HStack {
+        HStack(spacing: 6) {
             Spacer()
-            Button(service.loadingOlder ? "正在加载…" : "加载更早的邮件（再拉 \(olderBatch) 封）") {
-                Task { await service.loadOlder(count: olderBatch) }
+            if service.noMoreOlder {
+                Text("没有更早的邮件了").font(Theme.mono(11)).foregroundStyle(Theme.faint)
+            } else {
+                if service.loadingOlder { ProgressView().controlSize(.small) }
+                Button(service.loadingOlder ? "正在加载更早的邮件…" : "加载更早的邮件（再拉 \(olderBatch) 封）") {
+                    Task { await service.loadOlder(count: olderBatch) }
+                }
+                .disabled(service.loadingOlder)
+                .buttonStyle(.plain)
+                .font(Theme.mono(11))
+                .foregroundStyle(Theme.accent)
             }
-            .disabled(service.loadingOlder)
-            .buttonStyle(.plain)
-            .font(Theme.mono(11))
-            .foregroundStyle(Theme.accent)
             Spacer()
         }
         .padding(.vertical, 12)
+        .onAppear {
+            // 列表太短（比如某个筛选只有几封）时不自动拉，免得一直往前翻整个邮箱
+            guard reader.threads.count >= 20, !service.loadingOlder, !service.noMoreOlder else { return }
+            Task { await service.loadOlder(count: olderBatch) }
+        }
     }
 
     @ViewBuilder
@@ -257,17 +270,14 @@ private struct SectionHeader: View {
     var body: some View {
         let color = Theme.color(named: section.colorName)
         HStack(spacing: 7) {
-            Button(action: onToggle) {
-                HStack(spacing: 7) {
+            HStack(spacing: 7) {
                     Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold))
                         .rotationEffect(.degrees(collapsed ? 0 : 90)).foregroundStyle(Theme.faint)
                     Image(systemName: section.icon).font(.system(size: 11)).foregroundStyle(color)
                     Text(section.title).font(Theme.ui(12, .semibold)).foregroundStyle(Theme.text)
                     Text("\(section.threads.count)").font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
                     if section.unread > 0 { Text("· \(section.unread) 未读").font(Theme.mono(10.5)).foregroundStyle(color) }
-                }
             }
-            .buttonStyle(.plain)
             Spacer()
             if section.cleanable, routineUnread > 0 {
                 Button(action: onClean) {
@@ -281,6 +291,9 @@ private struct SectionHeader: View {
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
         .background(Theme.panel)
+        .contentShape(Rectangle())   // 整行都能点，不只是文字
+        .onTapGesture(perform: onToggle)
+        .pointerStyle(.link)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.8)).frame(height: 0.5) }
     }
 }
@@ -291,6 +304,8 @@ private struct ThreadRow: View {
     let thread: ThreadSummary
     let selected: Bool
     let rules: [String: Rule]
+    /// 正在看的规则（侧栏点了某条规则）：列表里每一行都命中它，不用再重复显示这个标签
+    var viewingRule: String?
     let compact: Bool
     let showSnippet: Bool
     @State private var hovering = false
@@ -403,17 +418,18 @@ private struct ThreadRow: View {
         let relationReason = Self.relation(thread.reasons)
         // 规则已经表达了这层关系（比如规则"请求你 Review"按 review_requested 匹配）就不再重复显示关系标签
         let coveredByRule = relationReason.map { reason in matched.contains { $0.reasons.contains(reason) } } ?? false
+        let shownRules = matched.filter { $0.name != viewingRule }
         let relation = coveredByRule ? nil : relationReason.flatMap(GitHubReason.event(for:)).flatMap { $0.notable ? $0 : nil }
-        let hasTags = !matched.isEmpty || info?.reference != nil || relation != nil || (!isPR && info?.event != nil)
+        let hasTags = !shownRules.isEmpty || info?.reference != nil || relation != nil || (!isPR && info?.event != nil)
         if hasTags {
             FlowLayout(spacing: 4, lineSpacing: 3) {
                 if let relation { Chip(text: relation.label, color: Theme.color(named: relation.color), mono: false) }
-                ForEach(matched.prefix(3), id: \.name) { rule in
+                ForEach(shownRules.prefix(3), id: \.name) { rule in
                     if rule.name != relation?.label {
                         Chip(text: rule.name, color: Theme.color(for: rule), filled: Theme.priority(of: rule) == 3, mono: false)
                     }
                 }
-                if matched.count > 3 { Chip(text: "+\(matched.count - 3)", color: Theme.muted) }
+                if shownRules.count > 3 { Chip(text: "+\(shownRules.count - 3)", color: Theme.muted) }
                 if let reference = info?.reference { Chip(text: reference, color: serviceColor) }
                 if info?.service == .github, let key = info?.jiraKey { Chip(text: key, color: Theme.color(for: .jira)) }
                 if !isPR, let event = info?.event { Chip(text: event.label, color: Theme.color(named: event.color), mono: false) }
