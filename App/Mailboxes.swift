@@ -43,9 +43,27 @@ struct SystemMailbox: Identifiable {
         case .label(let id): return categoryNames[id] ?? labels.first { $0.id == id }?.name ?? id
         case .rule(let name): return "规则：\(name)"
         case .anyRule, .important: return "重点"
+        case .sourceRest(let source, _):
+            let name = ["github": "GitHub", "jira": "Jira", "googleDocs": "Google 文档"][source] ?? source
+            return "\(name) · 其他"
         case .attention: return "待处理"
         case .unread: return "未读"
         case .allMail: return "所有邮件"
         }
+    }
+}
+
+/// 规则在侧栏里属于哪个来源分组。
+enum RuleGrouping {
+    static func key(_ rule: Rule) -> String {
+        // 推荐规则模板里的规则，直接按模板归属
+        if RuleTemplates.github.contains(where: { $0.name == rule.name }) { return "github" }
+        if RuleTemplates.jira.contains(where: { $0.name == rule.name }) { return "jira" }
+        if RuleTemplates.googleDocs.contains(where: { $0.name == rule.name }) { return "googleDocs" }
+        let name = rule.name.lowercased()
+        if name.hasPrefix("jira") || rule.from.contains(where: { $0.lowercased().contains("atlassian") || $0.lowercased().contains("jira") }) { return "jira" }
+        if name.hasPrefix("文档") || rule.from.contains(where: { $0.lowercased().contains("google") }) { return "googleDocs" }
+        if !rule.reasons.isEmpty { return "github" }
+        return "other"
     }
 }

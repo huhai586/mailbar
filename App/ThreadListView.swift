@@ -37,7 +37,7 @@ struct ThreadListView: View {
                         .rotationEffect(.degrees(service.syncing ? 360 : 0))
                         .animation(service.syncing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: service.syncing)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlainPointerButtonStyle())
                 .foregroundStyle(Theme.muted)
                 .pointerStyle(.link)
                 .help("立即收取邮件（⌘R）")
@@ -57,7 +57,7 @@ struct ThreadListView: View {
                     }
                 if !reader.searchText.isEmpty {
                     Button { reader.searchText = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 11)) }
-                        .buttonStyle(.plain).foregroundStyle(Theme.faint)
+                        .buttonStyle(PlainPointerButtonStyle()).foregroundStyle(Theme.faint)
                 }
             }
             .padding(.horizontal, 8)
@@ -103,7 +103,7 @@ struct ThreadListView: View {
             .background(active ? Theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: 5))
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? Color.clear : Theme.border.opacity(0.7), lineWidth: 0.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
     }
 
     /// 列表按"会话"还是按"PR"分组：PR 模式下同一个 PR 的评论、CI 结果、Jira 联动合成一行。
@@ -134,7 +134,7 @@ struct ThreadListView: View {
                 .foregroundStyle(active ? Theme.text : Theme.muted)
                 .background(active ? Theme.selection : .clear, in: RoundedRectangle(cornerRadius: 5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
     }
 
     // MARK: - List
@@ -142,36 +142,28 @@ struct ThreadListView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                LazyVStack(spacing: 0) {
                     let rules = reader.rulesByName
                     let visible = reader.visibleThreads
                     ForEach(reader.sections) { section in
-                        let collapsed = reader.isCollapsed(section)
-                        Section {
-                            if !collapsed {
-                                ForEach(section.threads) { thread in
-                                    ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
-                                              viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
-                                              compact: density != "spacious", showSnippet: showSnippets)
-                                        .id(thread.id)
-                                        .onTapGesture {
-                                            reader.selectedThreadID = thread.id
-                                            listFocused = true
-                                        }
-                                        .contextMenu {
-                                            Button(thread.isUnread ? "标为已读" : "标为未读") { reader.toggleRead(threadId: thread.id) }
-                                            if let url = ThreadRow.githubURL(for: thread) {
-                                                Button("在 GitHub 中打开") { NSWorkspace.shared.open(url) }
-                                            }
-                                            Button("在 Gmail 中打开") { NSWorkspace.shared.open(gmailURL(threadId: thread.latestThreadId, account: service.accountEmail)) }
-                                        }
-                                        .onAppear { if thread.id == visible.last?.id { reader.loadMore() } }
+                        // 没有分组标题了（已读 / 未读靠颜色区分），分组只决定排序，不再折叠
+                        ForEach(section.threads) { thread in
+                            ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
+                                      viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
+                                      compact: density != "spacious", showSnippet: showSnippets)
+                                .id(thread.id)
+                                .onTapGesture {
+                                    reader.selectedThreadID = thread.id
+                                    listFocused = true
                                 }
-                            }
-                        } header: {
-                            SectionHeader(section: section, collapsed: collapsed, routineUnread: reader.stats.routineUnread,
-                                          onToggle: { withAnimation(.easeInOut(duration: 0.12)) { reader.toggleSection(section) } },
-                                          onClean: { reader.cleanRoutine() })
+                                .contextMenu {
+                                    Button(thread.isUnread ? "标为已读" : "标为未读") { reader.toggleRead(threadId: thread.id) }
+                                    if let url = ThreadRow.githubURL(for: thread) {
+                                        Button("在 GitHub 中打开") { NSWorkspace.shared.open(url) }
+                                    }
+                                    Button("在 Gmail 中打开") { NSWorkspace.shared.open(gmailURL(threadId: thread.latestThreadId, account: service.accountEmail)) }
+                                }
+                                .onAppear { if thread.id == visible.last?.id { reader.loadMore() } }
                         }
                     }
                     if !reader.threads.isEmpty, !reader.hasMore, reader.searchText.isEmpty { olderFooter }
@@ -224,7 +216,7 @@ struct ThreadListView: View {
                     Task { await service.loadOlder(count: olderBatch) }
                 }
                 .disabled(service.loadingOlder)
-                .buttonStyle(.plain)
+                .buttonStyle(PlainPointerButtonStyle())
                 .font(Theme.mono(11))
                 .foregroundStyle(Theme.accent)
             }
@@ -255,46 +247,6 @@ struct ThreadListView: View {
                     .foregroundStyle(Theme.muted)
             }
         }
-    }
-}
-
-// MARK: - Section header
-
-private struct SectionHeader: View {
-    let section: ReaderModel.ListSection
-    let collapsed: Bool
-    let routineUnread: Int
-    let onToggle: () -> Void
-    let onClean: () -> Void
-
-    var body: some View {
-        let color = Theme.color(named: section.colorName)
-        HStack(spacing: 7) {
-            HStack(spacing: 7) {
-                    Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold))
-                        .rotationEffect(.degrees(collapsed ? 0 : 90)).foregroundStyle(Theme.faint)
-                    Image(systemName: section.icon).font(.system(size: 11)).foregroundStyle(color)
-                    Text(section.title).font(Theme.ui(12, .semibold)).foregroundStyle(Theme.text)
-                    Text("\(section.threads.count)").font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
-                    if section.unread > 0 { Text("· \(section.unread) 未读").font(Theme.mono(10.5)).foregroundStyle(color) }
-            }
-            Spacer()
-            if section.cleanable, routineUnread > 0 {
-                Button(action: onClean) {
-                    Text("清理 \(routineUnread) 条例行未读").font(Theme.ui(11)).foregroundStyle(Theme.accent)
-                }
-                .buttonStyle(.plain)
-                .help("把收件箱里所有未读的例行机器人邮件（质量门通过、包体积检查、测试汇总……）标为已读")
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
-        .background(Theme.panel)
-        .contentShape(Rectangle())   // 整行都能点，不只是文字
-        .onTapGesture(perform: onToggle)
-        .pointerStyle(.link)
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.8)).frame(height: 0.5) }
     }
 }
 
@@ -351,6 +303,29 @@ private struct ThreadRow: View {
 
     @Environment(\.colorScheme) private var scheme
 
+    /// 真正算"未读"的：有真人 / 出问题 / 非 PR 的未读；只剩例行机器人未读的 PR 当作已读。
+    private var unread: Bool { thread.isUnread && !(thread.onlyRoutineUnread && isPR) }
+
+    /// PR 行底部：PR 号 + 已有多少条真人评论（没有真人评论就只显示 PR 号；有新的未读评论用强调色标出来）。
+    @ViewBuilder
+    private func commentsLine(_ info: NotificationInfo?) -> some View {
+        let number = info?.reference.map { $0.replacingOccurrences(of: "PR ", with: "") }
+        if number != nil || thread.humanCount > 0 {
+            HStack(spacing: 10) {
+                if let number { Text(number).foregroundStyle(Theme.faint) }
+                if thread.humanCount > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: thread.humanUnread > 0 ? "text.bubble.fill" : "text.bubble").font(.system(size: 10))
+                        Text(thread.humanUnread > 0 ? "\(thread.humanCount) 条真人评论 · \(thread.humanUnread) 条新" : "\(thread.humanCount) 条真人评论")
+                    }
+                    .foregroundStyle(thread.humanUnread > 0 ? Theme.accent : Theme.muted)
+                    .fontWeight(thread.humanUnread > 0 ? .medium : .regular)
+                }
+            }
+            .font(Theme.mono(11))
+        }
+    }
+
     private var important: Bool { thread.humanUnread > 0 || thread.alertUnread > 0 || (!isPR && thread.isUnread) }
 
     var body: some View {
@@ -358,44 +333,43 @@ private struct ThreadRow: View {
         let title = info?.title ?? thread.subject
         HStack(alignment: .top, spacing: 0) {
             Rectangle().fill(barColor).frame(width: 3)
-            ServiceIcon(source: thread.source, size: 15, color: thread.isUnread ? Theme.muted : Theme.faint)
+            ServiceIcon(source: thread.source, size: 15, color: unread ? Theme.accent : Theme.faint)
                 .frame(width: 28, height: 28)
-                .background(Theme.raised.opacity(0.7), in: Circle())
-                .padding(.leading, 12).padding(.top, 1)
+                .background(unread ? Theme.accent.opacity(0.14) : Theme.raised.opacity(0.5), in: Circle())
+                .padding(.leading, 12)
+                .padding(.top, Theme.pad(compact ? 9 : 11))   // 和右边文字块同样的上边距：图标顶端对齐标题顶端
             VStack(alignment: .leading, spacing: Theme.pad(compact ? 3 : 5)) {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     // 未读圆点：有真人 / 出问题的未读是强调色；只有例行机器人未读是灰点
                     Circle()
-                        .fill(thread.isUnread ? (thread.onlyRoutineUnread && isPR ? Theme.faint : Theme.accent) : .clear)
+                        .fill(thread.isUnread ? (unread ? Theme.accent : Theme.faint) : .clear)
                         .frame(width: 6, height: 6)
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
                     Text(title.isEmpty ? "（无主题）" : title)
-                        .font(Theme.title(14, important ? .semibold : .regular, scheme: scheme))
-                        .foregroundStyle(thread.isUnread && !(thread.onlyRoutineUnread && isPR) ? Theme.text : Theme.text.opacity(0.65))
-                        .lineLimit(compact ? 1 : 2)
-                    Spacer(minLength: 4)
-                    VStack(alignment: .trailing, spacing: 5) {
-                        HStack(spacing: 4) {
-                            if thread.hasAttachments { Image(systemName: "paperclip").font(.system(size: 10)).foregroundStyle(Theme.faint) }
-                            Text(DateText.list(thread.date)).font(Theme.mono(11)).foregroundStyle(Theme.faint)
-                        }
-                        if isPR { activityBar }
-                    }
+                        .font(Theme.title(14, unread ? .semibold : .regular, scheme: scheme))
+                        // 未读：醒目的主色 + 加粗；已读：退成灰色，细字重
+                        .foregroundStyle(unread ? Theme.text : Theme.muted)
+                        .lineLimit(nil)   // 标题完整显示，太长就换行
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    if thread.hasAttachments { Image(systemName: "paperclip").font(.system(size: 10)).foregroundStyle(Theme.faint) }
                 }
-                metaLine(info).padding(.leading, 13)
-                statusLine(info).padding(.leading, 13)
+                // PR 行不需要这一行（标题已经够认；仓库 / 编号 / 发件人点进去就能看到）；非 PR 的邮件靠发件人认
+                if !isPR { metaLine(info).padding(.leading, 13) }
+                if isPR { commentsLine(info).padding(.leading, 13) }
             }
             .padding(.leading, 6)
             .padding(.trailing, 12)
             .padding(.vertical, Theme.pad(compact ? 9 : 11))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .background(selected ? Theme.accent.opacity(0.09) : (hovering ? Theme.hover : .clear), in: RoundedRectangle(cornerRadius: 10))
+        .background(selected ? Theme.accent.opacity(0.09) : (hovering ? Theme.hover : (unread ? Theme.raised.opacity(0.55) : .clear)), in: RoundedRectangle(cornerRadius: 10))
         .overlay { if selected { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1) } }
         .padding(.horizontal, 6).padding(.vertical, 1)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.7)).frame(height: 0.5) }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        .pointerStyle(.link)
     }
 
     /// 谁、在哪：发件人 · 仓库 #PR · Jira 编号。全是安静的灰色小字，不再是一堆药丸。
@@ -408,80 +382,5 @@ private struct ThreadRow: View {
             .font(Theme.mono(11, thread.humanUnread > 0 ? .medium : .regular))
             .foregroundStyle(thread.humanUnread > 0 ? Theme.muted : Theme.faint)
             .lineLimit(1).truncationMode(.middle)
-    }
-
-    /// 右侧的细活动条：评论 / 失败 / 例行各占多少，一眼看出这个 PR 的热度来自哪里。
-    private var activityBar: some View {
-        let parts: [(Int, Color)] = [(thread.humanCount, Theme.text), (thread.alertCount, Theme.red), (thread.routineCount, Theme.faint.opacity(0.45))]
-        let total = max(1, parts.reduce(0) { $0 + $1.0 })
-        return HStack(spacing: 1) {
-            ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
-                if part.0 > 0 { Rectangle().fill(part.1).frame(width: max(3, 56 * CGFloat(part.0) / CGFloat(total))) }
-            }
-        }
-        .frame(width: 56, height: 3, alignment: .trailing)
-        .clipShape(RoundedRectangle(cornerRadius: 1.5))
-    }
-
-    private func symbol(for label: String) -> String {
-        if label.contains("Review") { return "eye" }
-        if label.contains("提及") || label.contains("提到") { return "at" }
-        if label.contains("指派") { return "person.crop.circle.badge.plus" }
-        return "circle.fill"
-    }
-
-    private func status(_ icon: String?, _ text: String, _ color: Color, weight: Font.Weight = .regular) -> some View {
-        HStack(spacing: 3) {
-            if let icon { Image(systemName: icon).font(.system(size: 9, weight: .semibold)) }
-            Text(text)
-        }
-        .font(Theme.mono(11, weight))
-        .foregroundStyle(color)
-        .fixedSize()
-    }
-
-    /// 只给"有含义的事"上色：需要你（强调色）、出问题（红）；规则是小圆点 + 文字；其余全是灰。
-    @ViewBuilder
-    private func statusLine(_ info: NotificationInfo?) -> some View {
-        let relationReason = Self.relation(thread.reasons)
-        // 规则已经表达了这层关系（比如规则"请求你 Review"按 review_requested 匹配）就不再重复显示关系标签
-        let coveredByRule = relationReason.map { reason in matched.contains { $0.reasons.contains(reason) } } ?? false
-        let shownRules = matched.filter { $0.name != viewingRule }
-        let relation = coveredByRule ? nil : relationReason.flatMap(GitHubReason.event(for:)).flatMap { $0.notable ? $0 : nil }
-        let event = !isPR ? info?.event : nil
-        let hasAny = !shownRules.isEmpty || relation != nil || event != nil || (isPR && (thread.humanCount > 0 || thread.alertCount > 0 || thread.routineCount > 0 || thread.jiraCount > 0))
-        if hasAny {
-            FlowLayout(spacing: 10, lineSpacing: 3) {
-                if let relation { status(symbol(for: relation.label), relation.label, relation.color == "red" ? Theme.red : Theme.accent, weight: .medium) }
-                if let event, event.notable { status(symbol(for: event.label), event.label, Theme.accent, weight: .medium) }
-                ForEach(shownRules.prefix(3), id: \.name) { rule in
-                    if rule.name != relation?.label {
-                        HStack(spacing: 4) {
-                            Circle().fill(Theme.color(for: rule)).frame(width: 5, height: 5)
-                            Text(rule.name)
-                        }
-                        .font(Theme.mono(11, Theme.priority(of: rule) >= 2 ? .medium : .regular))
-                        .foregroundStyle(Theme.priority(of: rule) >= 2 ? Theme.accent : Theme.muted)
-                        .fixedSize()
-                    }
-                }
-                if shownRules.count > 3 { status(nil, "+\(shownRules.count - 3)", Theme.faint) }
-                if isPR {
-                    if thread.alertCount > 0 {
-                        status("exclamationmark.triangle.fill", "\(thread.alertUnread > 0 ? thread.alertUnread : thread.alertCount) 次失败", Theme.red, weight: .medium)
-                    }
-                    if thread.humanUnread > 0 {
-                        status("person.fill", "\(thread.humanUnread) 条新评论", Theme.text, weight: .medium)
-                    } else if thread.humanCount > 0 {
-                        status("person", "\(thread.humanCount) 条评论", Theme.muted)
-                    }
-                    if thread.routineCount > 0 { status("gearshape", "例行 \(thread.routineCount)", Theme.faint) }
-                    if thread.jiraCount > 0 { status("checklist", "Jira \(thread.jiraCount)", Theme.faint) }
-                }
-                if let event, !event.notable { status(nil, event.label, Theme.muted) }
-            }
-        } else if showSnippet, !thread.snippet.isEmpty, !isPR {
-            Text(thread.snippet).font(Theme.ui(12)).foregroundStyle(Theme.faint).lineLimit(1)
-        }
     }
 }

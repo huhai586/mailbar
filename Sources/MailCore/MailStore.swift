@@ -134,6 +134,22 @@ public final class MailStore: @unchecked Sendable {
             // "提及"不再算机器人邮件：让规则命中记录重新计算
             try db.execute(sql: "DELETE FROM sync_state WHERE key = 'rulesFingerprint'")
         }
+        migrator.registerMigration("v10-reclassify-summary") { db in
+            // "Tests Summary / Test Report" 的识别放宽了（带 s 的复数写法），重新判定类型；规则命中也重新计算
+            for row in try Row.fetchAll(db, sql: "SELECT id, subject, fromAddr, substr(bodyText, 1, 2500) AS body FROM message") {
+                let kind = MessageClassifier.kind(subject: row["subject"], from: row["fromAddr"], body: row["body"]).rawValue
+                try db.execute(sql: "UPDATE message SET kind = ? WHERE id = ?", arguments: [kind, row["id"] as String])
+            }
+            try db.execute(sql: "DELETE FROM sync_state WHERE key = 'rulesFingerprint'")
+        }
+        migrator.registerMigration("v11-reclassify-upgraded-defaults") { db in
+            // 本机保存的识别配置里还是旧的默认值（v10 当时读到的就是旧的），升级成新默认后再判定一次
+            for row in try Row.fetchAll(db, sql: "SELECT id, subject, fromAddr, substr(bodyText, 1, 2500) AS body FROM message") {
+                let kind = MessageClassifier.kind(subject: row["subject"], from: row["fromAddr"], body: row["body"]).rawValue
+                try db.execute(sql: "UPDATE message SET kind = ? WHERE id = ?", arguments: [kind, row["id"] as String])
+            }
+            try db.execute(sql: "DELETE FROM sync_state WHERE key = 'rulesFingerprint'")
+        }
         return migrator
     }
 

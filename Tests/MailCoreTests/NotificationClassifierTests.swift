@@ -144,11 +144,9 @@ import Testing
         func hits(_ rules: [Rule], subject: String, from: String, body: String = "") -> Set<String> {
             Set(RuleSet(rules: rules).matching(Matchable(subject: subject, from: from, body: body)).map(\.name))
         }
-        #expect(hits(RuleTemplates.jira, subject: "[JIRA] (VM-1) t", from: "Jira <jira@x.atlassian.net>", body: "Kevin assigned this issue to you")
-                    .contains("Jira · 指派给你"))
-        #expect(hits(RuleTemplates.jira, subject: "[JIRA] (VM-1) t", from: "Jira <jira@x.atlassian.net>", body: "Kevin mentioned you").contains("Jira · 提到你"))
-        #expect(hits(RuleTemplates.jira, subject: "[JIRA] (VM-1) Blocker: crash", from: "Jira <jira@x.atlassian.net>").contains("Jira · 高优先级"))
-        #expect(hits(RuleTemplates.jira, subject: "[JIRA] (VM-1) t", from: "Jira <jira@x.atlassian.net>", body: "PR https://x is merged.").contains("Jira · PR 已合并"))
+        #expect(hits(RuleTemplates.jira, subject: "[JIRA] (VM-1) t", from: "Jira <jira@x.atlassian.net>", body: "Kevin mentioned you").contains("Jira · 被 @ 提及"))
+        // Jira 只剩「被 @ 提及」：指派、高优先级、PR 合并都归到侧栏的「其他」
+        #expect(hits(RuleTemplates.jira, subject: "[JIRA] (VM-1) t", from: "Jira <jira@x.atlassian.net>", body: "Kevin assigned this issue to you").isEmpty)
         // 不是 Atlassian 发的邮件不会被 Jira 规则命中
         #expect(hits(RuleTemplates.jira, subject: "Blocker issue", from: "Bob <bob@example.com>", body: "mentioned you").isEmpty)
 

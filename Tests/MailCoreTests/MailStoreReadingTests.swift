@@ -148,3 +148,17 @@ private func store(with messages: [ParsedMessage]) throws -> MailStore {
         #expect(byId.count == 3)
     }
 }
+
+@Suite struct SourceRestMailboxTests {
+    @Test func restExcludesRuleMatchesWithinTheSource() throws {
+        func msg(_ id: String, source: String) -> ParsedMessage {
+            var m = makeMessage(id, date: 1000, labels: ["INBOX", "UNREAD"])
+            m.source = source
+            return m
+        }
+        let s = try store(with: [msg("a", source: "github"), msg("b", source: "github"), msg("c", source: "jira")])
+        _ = try s.recordMatch(messageId: "a", ruleName: "被 @ 提及")
+        #expect(try s.unreadThreadCount(in: .sourceRest(source: "github", excluding: ["被 @ 提及"])) == 1)   // 只有 b
+        #expect(try s.unreadThreadCount(in: .sourceRest(source: "jira", excluding: ["Jira · 被 @ 提及"])) == 1)
+    }
+}

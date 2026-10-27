@@ -7,15 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1119BEA8597A2262FDAA5072 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F4292DD78F2DC9593621739F /* JetBrainsMono-Medium.ttf */; };
 		20848FAAE313E9901D38DFD5 /* BrandIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6838F5CC960F93B58099A9D8 /* BrandIcons.swift */; };
+		22A5829C1B7292A81EBE6991 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */; };
 		27FF4C60FB2B49FA4447DA53 /* Mailboxes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213527931496F0FC1A4EAD36 /* Mailboxes.swift */; };
+		2B4CCF53CF73220C369AF5BC /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 20A9C06A4FA9DC10BD95909A /* IBMPlexSans-Medium.ttf */; };
 		2BD43FB57B72F62FB9C4F2BD /* MailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EF065A276364D28F1CA40F /* MailApp.swift */; };
 		2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1180DCE4D53BBECB1E90113C /* Components.swift */; };
 		394079A43C89005E474C9C30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */; };
 		400CD61E8A4C1A8582A6AD2C /* SoundPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3819E4BF01F62E97D57B80B5 /* SoundPicker.swift */; };
+		48B0BFB31D52FF2C105C753F /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DDD78534B9CBD45B5443A79 /* IBMPlexSans-Regular.ttf */; };
 		49009C4D5E7C58F97CC47A0A /* HTMLBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4E1B89E529222E6E550D764 /* HTMLBodyView.swift */; };
 		4C2AC0AF145B5BE263C1776D /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51EA84EE34781F960835D494 /* FlowLayout.swift */; };
 		4C87F227D0FE569E367BEA17 /* ThreadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */; };
+		4F54950B70FEFDBCC661FA44 /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5ED3CC0B78B764DEA973B07C /* JetBrainsMono-SemiBold.ttf */; };
 		56A7D408A97A0F849085E955 /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88EB400AA4BA9B7E4B17835C /* RichText.swift */; };
 		59B23BF71B468C818CBBF745 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA0749059264A2FC2238246 /* SidebarView.swift */; };
 		5D29D91F0A897EB1E3DD6E18 /* ThreadListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */; };
@@ -23,33 +28,51 @@
 		7B447E3DA704785F87D5E3A0 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B157A46922C63138444D3 /* DashboardView.swift */; };
 		82B986952BDB18E125D5EF3C /* RulesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659948E83F048F8C1E01F23F /* RulesSettingsView.swift */; };
 		85814D486B1456E4DCDEF1FA /* StrongAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */; };
+		87F16DF97F4D9FAA57052177 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */; };
 		9936F6ECC118F924A5B24907 /* CommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */; };
+		9F3E99B8F0E794389950F689 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */; };
+		A6A7C5DD9321268891CD3750 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */; };
+		A844A6CB6F2833D8AD907865 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */; };
 		B4EB3A4D2FFC6779466E15A3 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D309B25F7B6E4597AAD4F658 /* RootView.swift */; };
 		B906FD99FE6B2B6F6AB0464F /* MailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 780C48AB7356AEC0B4C782DF /* MailCore */; };
+		BD3228AC19AE4FE4DF70CE76 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 30EF0CC5164A92EC15ED6453 /* IBMPlexMono-Regular.ttf */; };
 		BFC4E7249FA162FAB229EAAC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D1ACF6BFF0CB3E06D17081 /* SettingsView.swift */; };
+		C07E8793E41B60DE59A876BB /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0BFB239E1082AC1E36B09BDF /* IBMPlexMono-SemiBold.ttf */; };
 		C7B58777D1B14253FB5EDC0B /* ReaderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */; };
 		CC93E1712C36D3ABA9B5F77B /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D035DBFEE3C21BBCD6CE9970 /* MailService.swift */; };
 		CC9409782268101CEA5A6E5B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */; };
+		CDBD7EB591749462BF51DC5E /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4529AFD57AE81A83CE924D50 /* JetBrainsMono-Regular.ttf */; };
 		D290692AF7E325158404167F /* Prefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2383F8184966C06DE1BA8146 /* Prefs.swift */; };
+		E2B10F72C6365AD4ADC5DDB2 /* FontSets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338B267837EA86DA046B5C05 /* FontSets.swift */; };
 		E952C2F9599B4B5156788FE7 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807DD8561D1F00650EDBE0FD /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		03EF065A276364D28F1CA40F /* MailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailApp.swift; sourceTree = "<group>"; };
+		0BFB239E1082AC1E36B09BDF /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
+		0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.ttf"; sourceTree = "<group>"; };
+		0DDD78534B9CBD45B5443A79 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		1180DCE4D53BBECB1E90113C /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		20A9C06A4FA9DC10BD95909A /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
 		213527931496F0FC1A4EAD36 /* Mailboxes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mailboxes.swift; sourceTree = "<group>"; };
 		216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		2383F8184966C06DE1BA8146 /* Prefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Prefs.swift; sourceTree = "<group>"; };
+		30EF0CC5164A92EC15ED6453 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
+		338B267837EA86DA046B5C05 /* FontSets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontSets.swift; sourceTree = "<group>"; };
 		3819E4BF01F62E97D57B80B5 /* SoundPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPicker.swift; sourceTree = "<group>"; };
 		3BA0749059264A2FC2238246 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		3C5C646E35599E76FA6378AC /* Notifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notifier.swift; sourceTree = "<group>"; };
+		4529AFD57AE81A83CE924D50 /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; };
 		51EA84EE34781F960835D494 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		53D1ACF6BFF0CB3E06D17081 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		5ED3CC0B78B764DEA973B07C /* JetBrainsMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-SemiBold.ttf"; sourceTree = "<group>"; };
 		659948E83F048F8C1E01F23F /* RulesSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesSettingsView.swift; sourceTree = "<group>"; };
 		6838F5CC960F93B58099A9D8 /* BrandIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandIcons.swift; sourceTree = "<group>"; };
 		6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		807DD8561D1F00650EDBE0FD /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		88EB400AA4BA9B7E4B17835C /* RichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichText.swift; sourceTree = "<group>"; };
+		907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
+		96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
 		A4E1B89E529222E6E550D764 /* HTMLBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLBodyView.swift; sourceTree = "<group>"; };
 		A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB2B157A46922C63138444D3 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -60,8 +83,11 @@
 		D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadDetailView.swift; sourceTree = "<group>"; };
 		D309B25F7B6E4597AAD4F658 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadListView.swift; sourceTree = "<group>"; };
+		E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
 		EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderModel.swift; sourceTree = "<group>"; };
 		ED779ECEABEA8A866B472D46 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F4292DD78F2DC9593621739F /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
+		F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,6 +125,7 @@
 				B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */,
 				D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */,
 				E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */,
+				EFFCA30124573A4E56629D5D /* Fonts */,
 				3CBE47BC6363D7136C5291D0 /* Theme */,
 			);
 			path = App;
@@ -110,6 +137,7 @@
 				6838F5CC960F93B58099A9D8 /* BrandIcons.swift */,
 				1180DCE4D53BBECB1E90113C /* Components.swift */,
 				51EA84EE34781F960835D494 /* FlowLayout.swift */,
+				338B267837EA86DA046B5C05 /* FontSets.swift */,
 				88EB400AA4BA9B7E4B17835C /* RichText.swift */,
 				807DD8561D1F00650EDBE0FD /* Theme.swift */,
 			);
@@ -131,6 +159,25 @@
 				F6C54C7198C1417C864955C9 /* Packages */,
 				C3EF16B9530E7358B87490EB /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		EFFCA30124573A4E56629D5D /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */,
+				907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */,
+				30EF0CC5164A92EC15ED6453 /* IBMPlexMono-Regular.ttf */,
+				0BFB239E1082AC1E36B09BDF /* IBMPlexMono-SemiBold.ttf */,
+				96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */,
+				20A9C06A4FA9DC10BD95909A /* IBMPlexSans-Medium.ttf */,
+				0DDD78534B9CBD45B5443A79 /* IBMPlexSans-Regular.ttf */,
+				0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */,
+				F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */,
+				F4292DD78F2DC9593621739F /* JetBrainsMono-Medium.ttf */,
+				4529AFD57AE81A83CE924D50 /* JetBrainsMono-Regular.ttf */,
+				5ED3CC0B78B764DEA973B07C /* JetBrainsMono-SemiBold.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		F6C54C7198C1417C864955C9 /* Packages */ = {
@@ -207,6 +254,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				394079A43C89005E474C9C30 /* Assets.xcassets in Resources */,
+				87F16DF97F4D9FAA57052177 /* IBMPlexMono-Bold.ttf in Resources */,
+				A844A6CB6F2833D8AD907865 /* IBMPlexMono-Medium.ttf in Resources */,
+				BD3228AC19AE4FE4DF70CE76 /* IBMPlexMono-Regular.ttf in Resources */,
+				C07E8793E41B60DE59A876BB /* IBMPlexMono-SemiBold.ttf in Resources */,
+				22A5829C1B7292A81EBE6991 /* IBMPlexSans-Bold.ttf in Resources */,
+				2B4CCF53CF73220C369AF5BC /* IBMPlexSans-Medium.ttf in Resources */,
+				48B0BFB31D52FF2C105C753F /* IBMPlexSans-Regular.ttf in Resources */,
+				A6A7C5DD9321268891CD3750 /* IBMPlexSans-SemiBold.ttf in Resources */,
+				9F3E99B8F0E794389950F689 /* JetBrainsMono-Bold.ttf in Resources */,
+				1119BEA8597A2262FDAA5072 /* JetBrainsMono-Medium.ttf in Resources */,
+				CDBD7EB591749462BF51DC5E /* JetBrainsMono-Regular.ttf in Resources */,
+				4F54950B70FEFDBCC661FA44 /* JetBrainsMono-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -223,6 +282,7 @@
 				2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */,
 				7B447E3DA704785F87D5E3A0 /* DashboardView.swift in Sources */,
 				4C2AC0AF145B5BE263C1776D /* FlowLayout.swift in Sources */,
+				E2B10F72C6365AD4ADC5DDB2 /* FontSets.swift in Sources */,
 				49009C4D5E7C58F97CC47A0A /* HTMLBodyView.swift in Sources */,
 				2BD43FB57B72F62FB9C4F2BD /* MailApp.swift in Sources */,
 				CC93E1712C36D3ABA9B5F77B /* MailService.swift in Sources */,
@@ -253,7 +313,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -262,7 +322,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.10;
+				MARKETING_VERSION = 0.4.11;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = MailBar;
 				SDKROOT = macosx;
@@ -277,7 +337,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -286,7 +346,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.10;
+				MARKETING_VERSION = 0.4.11;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = MailBar;
 				SDKROOT = macosx;

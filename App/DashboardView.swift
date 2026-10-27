@@ -67,7 +67,7 @@ struct DashboardView: View {
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .disabled(action == nil)
     }
 
@@ -91,7 +91,7 @@ struct DashboardView: View {
             .padding(.vertical, 8)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.5)).frame(height: 0.5) }
     }
 

@@ -94,18 +94,20 @@ enum Theme {
     static var bodyPx: Int { max(10, 14 + Int(fontOffset.rounded())) }
     static func pad(_ v: CGFloat) -> CGFloat { (v * space * 2).rounded() / 2 }
 
-    // 字体（都带上字号偏移）
+    // 字体（都带上字号偏移；字体套装见 FontSets.swift）
+    static var fontSet: FontSet { FontSet(rawValue: UserDefaults.standard.string(forKey: Pref.fontSet) ?? "") ?? .jetbrains }
+
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: max(9, size + fontOffset), weight: weight, design: .monospaced)
+        fontSet.mono(max(9, size + fontOffset), weight)
     }
 
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: max(9, size + fontOffset), weight: weight)
+        fontSet.sans(max(9, size + fontOffset), weight)
     }
 
     /// 标题字体：深色（终端）用无衬线，浅色（纸质）用衬线；等宽留给元信息和编号。
     static func title(_ size: CGFloat, _ weight: Font.Weight = .regular, scheme: ColorScheme) -> Font {
-        scheme == .dark ? .system(size: max(9, size + fontOffset), weight: weight)
+        scheme == .dark ? fontSet.sans(max(9, size + fontOffset), weight)
                         : .system(size: max(9, size + 2 + fontOffset), weight: weight, design: .serif)
     }
 

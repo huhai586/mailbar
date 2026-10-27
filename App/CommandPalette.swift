@@ -51,6 +51,7 @@ struct CommandPalette: View {
                                 row(command, active: index == selected)
                                     .id(command.id)
                                     .onTapGesture { run(command) }
+                                    .pointerStyle(.link)
                             }
                             if filtered.isEmpty {
                                 Text("没有匹配的命令").font(Theme.mono(12)).foregroundStyle(Theme.faint).padding(20)

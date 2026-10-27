@@ -304,7 +304,7 @@ private struct RuleEditor: View {
             }
             .frame(width: 22, height: 22)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .help(name == nil ? "自动" : name!)
     }
 

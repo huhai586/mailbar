@@ -43,14 +43,30 @@ public struct KindConfig: Codable, Equatable, Sendable {
     /// 机器人邮件里命中就算"例行"
     public var routinePattern: String
 
+    /// 以前发布过的内置默认值；文件里的值恰好等于其中一个，说明用户没改过，可以换成当前默认值。
+    private static let legacyTemplatePatterns = [
+        #"test summary|test report|test service|ctrf|blackbox|bundle size check|quality gate|review council|playwright-report|bb-failure-context"#
+    ]
+    private static let legacyRoutinePatterns = [
+        #"quality gate passed|all tests passed|test summary|test report|review council.{0,40}in progress|bundle size check"#
+    ]
+
+    /// 返回有没有改动。
+    mutating func upgradeUntouchedDefaults() -> Bool {
+        var changed = false
+        if Self.legacyTemplatePatterns.contains(templatePattern) { templatePattern = Self.defaults.templatePattern; changed = true }
+        if Self.legacyRoutinePatterns.contains(routinePattern) { routinePattern = Self.defaults.routinePattern; changed = true }
+        return changed
+    }
+
     public static let defaults = KindConfig(
         overrides: [Override(id: "default-jira", field: .sender, pattern: "automation for jira", kind: .bot)],
         botSenders: ["[bot]"],
         subjectAlertPattern: #"\brun failed\b"#,
         pushPattern: #"^\s*@?\S+ (?:force-)?pushed \d+ commits?\b"#,
-        templatePattern: #"test summary|test report|test service|ctrf|blackbox|bundle size check|quality gate|review council|playwright-report|bb-failure-context"#,
+        templatePattern: #"tests? summary|tests? report|test service|ctrf|blackbox|bundle size check|quality gate|review council|playwright-report|bb-failure-context"#,
         alertPattern: #"quality gate failed|\x{1F525}|blackbox fail|\*\*[1-9]\d* failed\*\*|\x{274C}|:x:|\bfailure\b|\d+ tests? failed|bundle size check[\s\S]{0,2000}?(?:\x{26A0}|:warning:|&#9888|&#128308|\x{1F534}|exceed)"#,
-        routinePattern: #"quality gate passed|all tests passed|test summary|test report|review council.{0,40}in progress|bundle size check"#)
+        routinePattern: #"quality gate passed|all tests passed|tests? summary|tests? report|review council.{0,40}in progress|bundle size check"#)
 
     public init(overrides: [Override], botSenders: [String], subjectAlertPattern: String, pushPattern: String,
                 templatePattern: String, alertPattern: String, routinePattern: String) {
@@ -111,7 +127,9 @@ public final class KindConfigStore: @unchecked Sendable {
     /// 读文件；没有文件就用默认值。
     public static func read(at path: String = defaultPath()) -> KindConfig {
         guard let data = FileManager.default.contents(atPath: path),
-              let config = try? JSONDecoder().decode(KindConfig.self, from: data) else { return .defaults }
+              var config = try? JSONDecoder().decode(KindConfig.self, from: data) else { return .defaults }
+        // 保存下来的配置会把当时的默认值一起存进文件；之后内置默认值改进了，没被用户改过的就跟着升级
+        if config.upgradeUntouchedDefaults() { try? write(config, at: path) }
         return config
     }
 

@@ -115,3 +115,26 @@ import Testing
         do { _ = try ClientConfig.install(from: web, to: dest) } catch { #expect(error.localizedDescription.contains("桌面应用")) }
     }
 }
+
+@Suite struct KindConfigUpgradeTests {
+    @Test func untouchedOldDefaultsAreUpgraded() throws {
+        let path = NSTemporaryDirectory() + "kc-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var old = KindConfig.defaults
+        old.templatePattern = #"test summary|test report|test service|ctrf|blackbox|bundle size check|quality gate|review council|playwright-report|bb-failure-context"#
+        old.routinePattern = #"quality gate passed|all tests passed|test summary|test report|review council.{0,40}in progress|bundle size check"#
+        try KindConfigStore.write(old, at: path)
+        let loaded = KindConfigStore.read(at: path)
+        #expect(loaded.templatePattern == KindConfig.defaults.templatePattern)
+        #expect(loaded.routinePattern == KindConfig.defaults.routinePattern)
+    }
+
+    @Test func customizedPatternsAreKept() throws {
+        let path = NSTemporaryDirectory() + "kc-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var custom = KindConfig.defaults
+        custom.routinePattern = "my own pattern"
+        try KindConfigStore.write(custom, at: path)
+        #expect(KindConfigStore.read(at: path).routinePattern == "my own pattern")
+    }
+}

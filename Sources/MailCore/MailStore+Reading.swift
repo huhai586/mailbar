@@ -13,6 +13,8 @@ public enum Mailbox: Hashable, Sendable {
     case rule(String)
     /// 命中这些规则里任意一条的邮件
     case anyRule([String])
+    /// 某个来源（github / jira / googleDocs）里没命中这些规则的邮件：侧栏每个来源分组底下的「其他」
+    case sourceRest(source: String, excluding: [String])
     /// 命中任意已启用规则的邮件（"重点"视图；规则变化时命中记录会被整体重算，所以这里不需要规则名）
     case important
     /// 待处理：收件箱里出问题了（CI 失败等）、或者和你相关的 PR 上有真人的新评论
@@ -360,6 +362,11 @@ extension MailStore {
             return ("id IN (SELECT messageId FROM rule_match)", [])
         case .attention:
             return ("id IN (SELECT messageId FROM message_label WHERE labelId = 'INBOX')", [])
+        case .sourceRest(let source, let names):
+            guard !names.isEmpty else { return ("source = ?", [source]) }
+            let marks = Array(repeating: "?", count: names.count).joined(separator: ",")
+            return ("source = ? AND id NOT IN (SELECT messageId FROM rule_match WHERE ruleName IN (\(marks)))",
+                    StatementArguments([source] + names))
         case .anyRule(let names):
             guard !names.isEmpty else { return ("0", []) }
             let marks = Array(repeating: "?", count: names.count).joined(separator: ",")

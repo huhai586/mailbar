@@ -137,7 +137,7 @@ private struct ThreadConversation: View {
                                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
                                         .overlay(RoundedRectangle(cornerRadius: Theme.radius).stroke(Theme.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(PlainPointerButtonStyle())
                             }
                         }
                     }
@@ -213,7 +213,7 @@ private struct ThreadConversation: View {
             .overlay(alignment: .bottom) { if active { Rectangle().fill(Theme.accent).frame(height: 2).padding(.horizontal, 4) } }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
     }
 
     private func binding(_ id: String) -> Binding<Bool> {
@@ -433,7 +433,7 @@ private struct RoutineRunRow: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border.opacity(0.8), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PlainPointerButtonStyle())
             if open {
                 ForEach(messages) { message in
                     MessageCard(message: message, info: info(message),
@@ -466,7 +466,7 @@ private struct ActionButton: View {
             .background(Theme.raised, in: RoundedRectangle(cornerRadius: 5))
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.border, lineWidth: 0.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .disabled(!enabled)
         .help(help)
     }
@@ -613,6 +613,7 @@ private struct MessageCard: View {
         .padding(.vertical, Theme.pad(expanded ? 9 : 7))
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.easeInOut(duration: 0.12)) { expanded.toggle() } }
+        .pointerStyle(.link)
     }
 
     private static let kindChoices: [(MessageKind, String)] = [
@@ -662,7 +663,7 @@ private struct MessageCard: View {
                 .background(Theme.raised, in: RoundedRectangle(cornerRadius: 3))
                 .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.border, lineWidth: 0.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .help("切换显示方式（" + availableModes.map(\.label).joined(separator: " / ") + "）")
     }
 

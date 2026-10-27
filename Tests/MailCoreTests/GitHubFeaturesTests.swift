@@ -132,10 +132,10 @@ import Testing
     }
 
     @Test func missingSkipsAlreadyPresentNames() {
-        let existing = [Rule(name: "CI 失败", keywords: ["x"]), Rule(name: "自己的", keywords: ["y"])]
+        let existing = [Rule(name: "被 @ 提及", keywords: ["x"]), Rule(name: "自己的", keywords: ["y"])]
         let missing = RuleTemplates.missing(from: RuleTemplates.github, in: existing)
         #expect(missing.count == RuleTemplates.github.count - 1)
-        #expect(!missing.contains { $0.name == "CI 失败" })
+        #expect(!missing.contains { $0.name == "被 @ 提及" })
     }
 
     @Test func colorMustBeInThePalette() {

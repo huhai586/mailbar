@@ -85,6 +85,8 @@ final class ReaderModel: ObservableObject {
     @Published private(set) var messages: [MessageDetail] = []
     @Published private(set) var labels: [LabelInfo] = []
     @Published private(set) var ruleCounts: [RuleCount] = []
+    /// 各来源分组里「其他」的未读分组数（key = 来源）
+    @Published private(set) var restCounts: [String: Int] = [:]
     @Published private(set) var stats = Stats()
     /// 概览页用：最近的未读重点会话
     @Published private(set) var dashboard: [ThreadSummary] = []
@@ -204,6 +206,12 @@ final class ReaderModel: ObservableObject {
             labels = try store.labels()
             let counts = try store.unreadMatchCounts().map { RuleCount(name: $0.name, count: $0.count) }
             if counts != ruleCounts { ruleCounts = counts }
+            let enabled = service.rules.filter(\.enabled)
+            var rest: [String: Int] = [:]
+            for (source, rules) in Dictionary(grouping: enabled, by: RuleGrouping.key) where source != "other" {
+                rest[source] = try store.unreadThreadCount(in: .sourceRest(source: source, excluding: rules.map(\.name)))
+            }
+            if rest != restCounts { restCounts = rest }
             let newStats = Stats(inboxUnread: try store.unreadThreadCount(in: .label("INBOX")),
                                  importantUnread: try store.unreadThreadCount(in: .important),
                                  attention: try store.attentionCount(groupByPR: true),
@@ -440,6 +448,8 @@ final class ReaderModel: ObservableObject {
     // MARK: - Navigation
 
     private func apply(_ request: NavigationRequest) {
+        // 指定了邮箱就回到那个邮箱的完整列表（来源筛选会把目标邮件藏起来）
+        if request.mailbox != nil { sourceFilter = nil }
         if let target = request.mailbox, target != mailbox {
             searchText = ""
             pendingThreadID = request.threadId.map(resolveGroup(forThread:))

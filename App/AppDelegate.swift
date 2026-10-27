@@ -32,15 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     override init() {
         Pref.register()   // 先登记默认值，之后所有地方读到的设置都一致
+        AppFonts.registerBundled()
         super.init()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         service.notifier.onOpenThread = { [weak self] threadId in
-            self?.showMainWindow(mailbox: nil, threadId: threadId)
+            self?.showMainWindow(mailbox: threadId == nil ? nil : .allMail, threadId: threadId)   // 点通知：侧栏直接定位到「所有邮件」
         }
         service.strongAlerts.onOpen = { [weak self] hit in
-            self?.showMainWindow(mailbox: nil, threadId: hit.threadId)
+            self?.showMainWindow(mailbox: .allMail, threadId: hit.threadId)
         }
         service.strongAlerts.onVisibilityChange = { [weak self] in self?.updateActivationPolicy() }
         service.openSettings = { [weak self] tab in self?.showSettings(tab: tab) }

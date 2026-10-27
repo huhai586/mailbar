@@ -18,6 +18,8 @@ private enum Sample {
     static let reportPass = "dmx-monetize left a comment (Vungle/Monetize#7110)\n\n<h2>🔬 Nautilus Unit Test Report - Commit 21bb339</h2>\n\n| **Tests 📝** | **Passed ✅** | **Failed ❌** | **Skipped ⏭️** |\n| --- | --- | --- | --- |\n| 7007 | 7005 | 0 | 2 |\n\n### 🎉 **All tests passed!**\n\n<!-- CTRF PR COMMENT TAG: Nautilus -->\n\n-- \nReply to this email directly or view it on GitHub:\nhttps://github.com/Vungle/Monetize/pull/7110#issuecomment-1\nYou are receiving this because your review was requested."
     static let reportFail = "dmx-monetize left a comment (Vungle/Monetize#7110)\n\n<h2>🔬 Nautilus Unit Test Report</h2>\n| **Failed ❌** |\n| 3 |\n### ❌ **3 tests failed**\n<!-- CTRF PR COMMENT TAG: Nautilus -->"
     static let humanWithTemplateComment = "kevin opened a pull request (Vungle/Monetize#9)\n\n<!-- Please describe your change -->\nFixes the crash"
+    static let iosSummaryPass = "dmx-monetize left a comment (Vungle/Monetize#7171)\n\n## 🍎 iOS Blackbox Tests Summary [Nemo] (Commit: 76accb9)\n\n| SDK | OS | Device | Pass | Fail | Skip | Timeout | Error | Status | Link |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 7.1.0 | 16.0 | iPhone 14 Pro Max | 24 | 0 | 24 | 0 | 0 | ✅ Pass | [View](https://x) |"
+    static let iosSummaryFail = "dmx-monetize left a comment (Vungle/Monetize#7171)\n\n## 🍎 iOS Blackbox Tests Summary [Nemo] (Commit: 76accb9)\n\n| SDK | Status |\n| --- | --- |\n| 7.1.0 | ❌ Fail |"
     static let human = "kobolsky-vungle left a comment (Vungle/Monetize#7110)\n\n@council can you take another look at the interpreter change?"
 }
 
@@ -35,7 +37,7 @@ private enum Sample {
     @Test func humanMentioningTemplateWordsIsStillHuman() {
         #expect(kind("Nicholas Byfleet", "nbyfleet left a comment (Vungle/Monetize#7113)\n\nApproved. Would be good to get the blackbox test failures figured out, and conflicts resolved.") == .human)
         #expect(kind("Rock Chan", "rock left a comment (Vungle/Monetize#7077)\n\n@council review code effort=medium\n\nReview HEAD `9eb136c3a3a4`. blackbox quality gate") == .human)
-        #expect(kind("dmx-monetize", "dmx-monetize left a comment (Vungle/Monetize#7125)\r\n\r\n## <img src=\"x\" alt=\"Android\"> Android Blackbox Tests Summary [Nemo]\r\n\r\n| SDK |") == .bot)
+        #expect(kind("dmx-monetize", "dmx-monetize left a comment (Vungle/Monetize#7125)\r\n\r\n## <img src=\"x\" alt=\"Android\"> Android Blackbox Tests Summary [Nemo]\r\n\r\n| SDK |") == .botRoutine)   // CRLF 也认得出标题；没有失败的汇总算例行
         #expect(kind("Liftoff PE team", "pe-liftoff left a comment (Vungle/Monetize#7110)\n\nTest Service: nautilus<br/>Test Result: \u{2705}<br/>Test Report: https://x") == .botRoutine)
         #expect(kind("dmx-monetize", "dmx-monetize left a comment (Vungle/Monetize#7146)\n\n<h2>\u{1F52C} Nautilus Unit Test Report - Commit 06d4e33</h2>\n\nall good") == .botRoutine)
     }
@@ -47,6 +49,8 @@ private enum Sample {
         #expect(kind("\"github-actions[bot]\"", Sample.councilProgress) == .botRoutine)
         // 报告表头里的 "Failed ❌" 只是列名；隐藏标记在结尾；页脚要先去掉
         #expect(kind("dmx-monetize", Sample.reportPass) == .botRoutine)
+        #expect(kind("dmx-monetize", Sample.iosSummaryPass) == .botRoutine)   // "Tests Summary"（复数）全部通过
+        #expect(kind("dmx-monetize", Sample.iosSummaryFail) == .botAlert)
     }
 
     @Test func botMessagesThatSignalAProblem() {

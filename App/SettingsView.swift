@@ -33,6 +33,7 @@ private struct GeneralSettingsView: View {
     @AppStorage(Pref.appearance) private var appearance = "dark"
     @AppStorage(Pref.uiDensity) private var density = "standard"
     @AppStorage(Pref.fontOffset) private var fontOffset = 0.0
+    @AppStorage(Pref.fontSet) private var fontSet = "jetbrains"
     @AppStorage(Pref.monoBody) private var monoBody = true
     @AppStorage(Pref.showSnippets) private var showSnippets = true
     @AppStorage(Pref.renderMarkdown) private var renderMarkdown = true
@@ -68,6 +69,10 @@ private struct GeneralSettingsView: View {
                     Text("宽松").tag("spacious")
                 }
                 Text("整个界面（侧栏、列表、详情）的留白一起变。紧凑一屏看更多，宽松更透气。").font(.caption).foregroundStyle(.secondary)
+                Picker("字体", selection: $fontSet) {
+                    ForEach(FontSet.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                Text((FontSet(rawValue: fontSet) ?? .jetbrains).detail).font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Stepper(value: $fontOffset, in: -3...6, step: 1) {
                         Text("字号偏移　\(fontOffset > 0 ? "+" : "")\(Int(fontOffset)) pt")
@@ -435,7 +440,7 @@ private struct KindSettingsView: View {
                             ForEach(Self.kinds, id: \.0) { Text($0.1).tag($0.0.rawValue) }
                         }.labelsHidden().frame(width: 130)
                         Button { config.overrides.removeAll { $0.id == item.id } } label: { Image(systemName: "minus.circle") }
-                            .buttonStyle(.plain).foregroundStyle(.secondary).help("删除这条规则")
+                            .buttonStyle(PlainPointerButtonStyle()).foregroundStyle(.secondary).help("删除这条规则")
                     }
                 }
                 Button { config.overrides.insert(.init(), at: 0) } label: { Label("添加覆盖规则", systemImage: "plus") }

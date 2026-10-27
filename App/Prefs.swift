@@ -19,6 +19,7 @@ enum Pref {
     static let appearance = "appearance"          // dark / light / system
     static let listDensity = "listDensity"        // 旧的列表密度（已被 uiDensity 取代，保留键避免旧设置报错）
     static let uiDensity = "uiDensity"            // 整体密度：compact（紧凑）/ standard（标准）/ spacious（宽松）
+    static let fontSet = "fontSet"                // 字体套装：jetbrains（默认）/ plex / system
     static let fontOffset = "fontOffset"          // 整体字号偏移（pt，相对默认大小，-3 … +6）
     static let monoBody = "monoBody"
     static let showSnippets = "showSnippets"
@@ -62,6 +63,7 @@ enum Pref {
         appearance: "dark",
         listDensity: "compact",
         uiDensity: "standard",
+        fontSet: "jetbrains",
         fontOffset: 0.0,
         monoBody: true,
         showSnippets: true,

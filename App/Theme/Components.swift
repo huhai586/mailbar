@@ -52,7 +52,7 @@ struct LinkChip: View {
             .background(Theme.blue.opacity(hovering ? 0.14 : 0), in: RoundedRectangle(cornerRadius: 4))
             .fixedSize()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .onHover { hovering = $0 }
         .pointerStyle(.link)
         .help(help ?? "在浏览器中打开 \(url.absoluteString)")
@@ -83,7 +83,7 @@ struct JumpChip: View {
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(color.opacity(hovering ? 0.95 : 0.6), lineWidth: 0.8))
             .fixedSize()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainPointerButtonStyle())
         .onHover { hovering = $0 }
         .pointerStyle(.link)
         .help(help ?? "")
@@ -186,5 +186,14 @@ struct IconImage: View {
         } else {
             Image(systemName: name).font(.system(size: size))
         }
+    }
+}
+
+/// 无边框按钮，鼠标悬停时变成手型指针；按下略微变淡。App 里所有 "plain" 按钮都用它。
+struct PlainPointerButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .pointerStyle(.link)
     }
 }
