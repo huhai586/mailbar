@@ -93,7 +93,7 @@ struct ThreadListView: View {
         let active = reader.sourceFilter == source
         return Button { reader.sourceFilter = source } label: {
             HStack(spacing: 4) {
-                if let icon { Image(systemName: icon).font(.system(size: 9.5)).foregroundStyle(active ? color : Theme.faint) }
+                if let icon { IconImage(name: icon, size: 9.5).foregroundStyle(active ? color : Theme.faint) }
                 Text(title).font(Theme.ui(11.5, active ? .semibold : .regular))
                 Text("\(number)").font(Theme.mono(10)).foregroundStyle(highlight ? color : Theme.faint)
             }
@@ -358,6 +358,10 @@ private struct ThreadRow: View {
         let title = info?.title ?? thread.subject
         HStack(alignment: .top, spacing: 0) {
             Rectangle().fill(barColor).frame(width: 3)
+            ServiceIcon(source: thread.source, size: 15, color: thread.isUnread ? Theme.muted : Theme.faint)
+                .frame(width: 28, height: 28)
+                .background(Theme.raised.opacity(0.7), in: Circle())
+                .padding(.leading, 12).padding(.top, 1)
             VStack(alignment: .leading, spacing: Theme.pad(compact ? 3 : 5)) {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     // 未读圆点：有真人 / 出问题的未读是强调色；只有例行机器人未读是灰点
@@ -381,12 +385,14 @@ private struct ThreadRow: View {
                 metaLine(info).padding(.leading, 13)
                 statusLine(info).padding(.leading, 13)
             }
-            .padding(.leading, 8)
+            .padding(.leading, 6)
             .padding(.trailing, 12)
             .padding(.vertical, Theme.pad(compact ? 9 : 11))
         }
-        .background(selected ? Theme.accent.opacity(0.07) : (hovering ? Theme.hover : .clear))
-        .overlay { if selected { Rectangle().strokeBorder(Theme.accent.opacity(0.35), lineWidth: 1) } }
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(selected ? Theme.accent.opacity(0.09) : (hovering ? Theme.hover : .clear), in: RoundedRectangle(cornerRadius: 10))
+        .overlay { if selected { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1) } }
+        .padding(.horizontal, 6).padding(.vertical, 1)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.7)).frame(height: 0.5) }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }

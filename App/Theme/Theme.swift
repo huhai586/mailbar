@@ -103,9 +103,9 @@ enum Theme {
         .system(size: max(9, size + fontOffset), weight: weight)
     }
 
-    /// 标题字体：终端主题（深色）用等宽，纸质主题（浅色）用衬线。
+    /// 标题字体：深色（终端）用无衬线，浅色（纸质）用衬线；等宽留给元信息和编号。
     static func title(_ size: CGFloat, _ weight: Font.Weight = .regular, scheme: ColorScheme) -> Font {
-        scheme == .dark ? .system(size: max(9, size - 1 + fontOffset), weight: weight, design: .monospaced)
+        scheme == .dark ? .system(size: max(9, size + fontOffset), weight: weight)
                         : .system(size: max(9, size + 2 + fontOffset), weight: weight, design: .serif)
     }
 

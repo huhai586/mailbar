@@ -108,9 +108,9 @@ final class ReaderModel: ObservableObject {
     static let sourceOrder = ["github", "jira", "googleDocs", "other"]
     static func style(forSource source: String) -> (title: String, icon: String, color: String) {
         switch source {
-        case "github": return ("GitHub", "chevron.left.forwardslash.chevron.right", "blue")
-        case "jira": return ("Jira", "checklist", "cyan")
-        case "googleDocs": return ("文档", "doc.text", "green")
+        case "github": return ("GitHub", "brand.github", "blue")
+        case "jira": return ("Jira", "brand.jira", "cyan")
+        case "googleDocs": return ("文档", "brand.googleDocs", "green")
         default: return ("其他", "envelope", "gray")
         }
     }
@@ -410,7 +410,7 @@ final class ReaderModel: ObservableObject {
     /// 选中分组对应的原服务链接。按 PR 聚合的分组直接用 prKey 拼 GitHub 地址。
     func serviceLink() -> ServiceLink? {
         if let id = selectedThreadID, let key = GitHubSubject.splitPRKey(id), let url = URL(string: "https://github.com/\(key.repo)/pull/\(key.number)") {
-            return ServiceLink(name: "GitHub", icon: "chevron.left.forwardslash.chevron.right", url: url)
+            return ServiceLink(name: "GitHub", icon: "brand.github", url: url)
         }
         guard let info = primaryInfo else { return nil }
         let bodies = messages.suffix(4).flatMap { [$0.bodyText, $0.bodyHtml ?? ""] }
@@ -425,9 +425,9 @@ final class ReaderModel: ObservableObject {
 
     static func icon(for service: NotificationInfo.Service) -> String {
         switch service {
-        case .github: return "chevron.left.forwardslash.chevron.right"
-        case .jira: return "checklist"
-        case .googleDocs: return "doc.text"
+        case .github: return "brand.github"
+        case .jira: return "brand.jira"
+        case .googleDocs: return "brand.googleDocs"
         }
     }
 

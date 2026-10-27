@@ -200,6 +200,7 @@ private struct GeneralSettingsView: View {
 
 private struct AlertSettingsView: View {
     @ObservedObject var service: MailService
+    @AppStorage(Pref.newMailAlerts) private var newMailAlerts = "all"
     @AppStorage(Pref.alertsEnabled) private var enabled = true
     @AppStorage(Pref.alertMaxAgeHours) private var maxAge = 24
     @AppStorage(Pref.summaryThreshold) private var threshold = 5
@@ -212,7 +213,13 @@ private struct AlertSettingsView: View {
     var body: some View {
         Form {
             Section("提醒") {
-                Toggle("命中规则时提醒", isOn: $enabled)
+                Picker("新邮件通知", selection: $newMailAlerts) {
+                    Text("所有新邮件").tag("all")
+                    Text("只有真人和出问题的").tag("important")
+                    Text("不通知（只按规则）").tag("off")
+                }
+                Text("没命中任何规则的新邮件也会通知。「只有真人和出问题的」会跳过例行机器人（质量门通过、包体积检查等）、推送和其他机器人。命中规则的邮件仍按规则自己的提醒方式（通知 / 强提醒 / 声音）。").font(.caption).foregroundStyle(.secondary)
+                Toggle("提醒总开关", isOn: $enabled)
                 Text("关闭后不再弹通知、不响铃，但仍会记录命中，侧栏的规则筛选照常可用。").font(.caption).foregroundStyle(.secondary)
                 Picker("只提醒这段时间内到达的邮件", selection: $maxAge) {
                     Text("1 小时").tag(1)

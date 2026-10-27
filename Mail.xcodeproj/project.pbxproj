@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		20848FAAE313E9901D38DFD5 /* BrandIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6838F5CC960F93B58099A9D8 /* BrandIcons.swift */; };
 		27FF4C60FB2B49FA4447DA53 /* Mailboxes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213527931496F0FC1A4EAD36 /* Mailboxes.swift */; };
 		2BD43FB57B72F62FB9C4F2BD /* MailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EF065A276364D28F1CA40F /* MailApp.swift */; };
 		2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1180DCE4D53BBECB1E90113C /* Components.swift */; };
@@ -45,6 +46,7 @@
 		51EA84EE34781F960835D494 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		53D1ACF6BFF0CB3E06D17081 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		659948E83F048F8C1E01F23F /* RulesSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesSettingsView.swift; sourceTree = "<group>"; };
+		6838F5CC960F93B58099A9D8 /* BrandIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandIcons.swift; sourceTree = "<group>"; };
 		6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		807DD8561D1F00650EDBE0FD /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		88EB400AA4BA9B7E4B17835C /* RichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichText.swift; sourceTree = "<group>"; };
@@ -105,6 +107,7 @@
 		3CBE47BC6363D7136C5291D0 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
+				6838F5CC960F93B58099A9D8 /* BrandIcons.swift */,
 				1180DCE4D53BBECB1E90113C /* Components.swift */,
 				51EA84EE34781F960835D494 /* FlowLayout.swift */,
 				88EB400AA4BA9B7E4B17835C /* RichText.swift */,
@@ -215,6 +218,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CC9409782268101CEA5A6E5B /* AppDelegate.swift in Sources */,
+				20848FAAE313E9901D38DFD5 /* BrandIcons.swift in Sources */,
 				9936F6ECC118F924A5B24907 /* CommandPalette.swift in Sources */,
 				2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */,
 				7B447E3DA704785F87D5E3A0 /* DashboardView.swift in Sources */,
@@ -249,7 +253,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -258,7 +262,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.9;
+				MARKETING_VERSION = 0.4.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = MailBar;
 				SDKROOT = macosx;
@@ -273,7 +277,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -282,7 +286,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.9;
+				MARKETING_VERSION = 0.4.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = MailBar;
 				SDKROOT = macosx;

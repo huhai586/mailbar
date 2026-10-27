@@ -272,3 +272,16 @@ import Testing
         #expect(GitHubText.prettify("a < b and c > d") == "a < b and c > d")
     }
 }
+
+@Suite struct GitHubFooterNoteTests {
+    @Test func keepsReasonLines() {
+        let text = "LGTM\n\n--\nReply to this email directly, view it on GitHub, or unsubscribe.\nYou are receiving this because you were mentioned.\nMessage ID: <abc@github.com>"
+        let note = GitHubText.footerNote(text)
+        #expect(note == "Reply to this email directly, view it on GitHub, or unsubscribe.\nYou are receiving this because you were mentioned.")
+        #expect(GitHubText.stripFooter(text) == "LGTM")
+    }
+
+    @Test func noFooterNoNote() {
+        #expect(GitHubText.footerNote("just text") == nil)
+    }
+}

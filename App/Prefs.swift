@@ -1,4 +1,5 @@
 import Foundation
+import MailCore
 
 enum MarkReadMode: String, CaseIterable, Identifiable {
     case onOpen, afterDelay, manual
@@ -24,6 +25,7 @@ enum Pref {
     static let landing = "landingMailbox"        // 启动时先看哪里：attention（待处理）/ inbox（收件箱）
     static let autoCleanRoutine = "autoCleanRoutine"  // 自动把例行机器人邮件标为已读
     static let groupByPR = "groupByPR"            // 列表按 PR 聚合（评论、CI、Jira 联动合成一行）
+    static let newMailAlerts = "newMailAlerts"    // 没命中规则的新邮件要不要通知：all / important / off
     static let jiraName = "jiraName"              // 你在 Jira 里的显示名（@Howard Hu）；用来判断 Jira 邮件有没有提到你
     static let githubLogin = "githubLogin"        // 你的 GitHub 用户名；留空则自动识别
     static let sidebarShown = "sidebarShown"      // 侧栏显示哪些邮箱 / 标签（逗号分隔：UNREAD、ALL 或 Gmail 标签 id）
@@ -68,6 +70,7 @@ enum Pref {
         sidebarShown: "UNREAD,ALL",
         githubLogin: "",
         jiraName: "",
+        newMailAlerts: "all",
         autoCleanRoutine: false,
         renderMarkdown: true,
         githubTextView: true,
@@ -105,6 +108,7 @@ enum Pref {
     static var markReadDelaySeconds: Int { max(1, store.integer(forKey: markReadDelay)) }
     static var markWholeThread: Bool { store.bool(forKey: markReadWholeThread) }
     static var alertsOn: Bool { store.bool(forKey: alertsEnabled) }
+    static var newMailAlertMode: NewMailAlerts { NewMailAlerts(rawValue: store.string(forKey: newMailAlerts) ?? "all") ?? .all }
     /// 0 表示不限
     static var alertMaxAgeSeconds: TimeInterval { TimeInterval(store.integer(forKey: alertMaxAgeHours)) * 3600 }
     static var summaryThresholdCount: Int { max(1, store.integer(forKey: summaryThreshold)) }

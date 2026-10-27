@@ -286,7 +286,7 @@ private struct ThreadConversation: View {
                 if let info {
                     let context = info.context ?? info.service.displayName
                     if info.service == .github, let context = info.context, let url = URL(string: "https://github.com/\(context)") {
-                        LinkChip(text: context, url: url, icon: ReaderModel.icon(for: info.service), help: "在 GitHub 中打开仓库 \(context)")
+                        LinkChip(text: context, url: url, icon: "github", help: "在 GitHub 中打开仓库 \(context)")
                     } else {
                         Chip(text: context, color: serviceColor, icon: ReaderModel.icon(for: info.service))
                     }
@@ -300,7 +300,7 @@ private struct ThreadConversation: View {
                     if info.service == .github, let key = info.jiraKey {
                         // PR 标题里的 Jira 编号：点一下跳到 Jira 工单
                         if let url = reader.jiraURL(forKey: key) {
-                            LinkChip(text: key, url: url, icon: "checklist", help: "在 Jira 中打开 \(key)")
+                            LinkChip(text: key, url: url, icon: "jira", help: "在 Jira 中打开 \(key)")
                         } else {
                             Chip(text: key, color: Theme.color(for: .jira), icon: "checklist")
                         }
@@ -456,7 +456,7 @@ private struct ActionButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: icon).font(.system(size: 10.5))
+                IconImage(name: icon, size: 10.5)
                 Text(title).font(Theme.ui(11.5, .medium))
                 if let key { Text(key).font(Theme.mono(9.5)).foregroundStyle(Theme.faint) }
             }
@@ -524,6 +524,12 @@ private struct MessageCard: View {
         return message.isGitHubNotification ? GitHubText.stripFooter(text) : text
     }
 
+    /// GitHub 通知的页脚（"You are receiving this because you were mentioned."）：正文里不放，单独以小字显示在卡片底部。
+    private var footerNote: String? {
+        guard message.isGitHubNotification else { return nil }
+        return GitHubText.footerNote(message.bodyText.isEmpty ? message.snippet : message.bodyText)
+    }
+
     /// CI 失败通知：几十行任务清单只留失败的，按原文显示。
     private var digest: String? { message.isGitHubNotification ? GitHubText.ciDigest(plainText) : nil }
 
@@ -555,6 +561,14 @@ private struct MessageCard: View {
             if expanded {
                 Rectangle().fill(Theme.border).frame(height: 0.5)
                 content
+                if let note = footerNote {
+                    Text(note)
+                        .font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .overlay(alignment: .top) { Rectangle().fill(Theme.border.opacity(0.6)).frame(height: 0.5) }
+                }
             }
         }
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))

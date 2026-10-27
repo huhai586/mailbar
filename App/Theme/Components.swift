@@ -11,7 +11,7 @@ struct Chip: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            if let icon { Image(systemName: icon).font(.system(size: 8, weight: .bold)) }
+            if let icon { IconImage(name: icon, size: 8) }
             Text(text).lineLimit(1)
         }
         .font(mono ? Theme.mono(10.5, .medium) : Theme.ui(10.5, .medium))
@@ -35,7 +35,13 @@ struct LinkChip: View {
     var body: some View {
         Button { NSWorkspace.shared.open(url) } label: {
             HStack(spacing: 3) {
-                if let icon { Image(systemName: icon).font(.system(size: 9, weight: .semibold)) }
+                if let icon {
+                    if icon == "github" || icon == "jira" {
+                        ServiceIcon(source: icon, size: 12, color: hovering ? Theme.text : Theme.blue)
+                    } else {
+                        Image(systemName: icon).font(.system(size: 9, weight: .semibold))
+                    }
+                }
                 Text(text).underline(true, pattern: .dot).lineLimit(1)
                 Image(systemName: "arrow.up.right").font(.system(size: 8, weight: .bold)).opacity(0.7)
             }
@@ -91,10 +97,8 @@ struct Avatar: View {
 
     private static let palette: [Color] = [Theme.blue, Theme.purple, Theme.green, Theme.orange, Theme.pink, Theme.cyan, Theme.yellow]
 
-    private var color: Color {
-        let sum = name.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
-        return Self.palette[sum % Self.palette.count]
-    }
+    /// 统一用强调色：头像只是"谁"的记号，不该为彩色再加噪音。
+    private var color: Color { Theme.accent }
 
     var body: some View {
         Text(String(name.first(where: { $0.isLetter || $0.isNumber }) ?? "?").uppercased())
@@ -144,5 +148,43 @@ extension View {
             .overlay(alignment: .leading) {
                 if selected { Capsule().fill(Theme.accent).frame(width: 2, height: 14).offset(x: -1) }
             }
+    }
+}
+
+/// 服务图标：GitHub / Jira / Google 文档用官方品牌图标（见 BrandIcons），其余用 SF Symbols。
+struct ServiceIcon: View {
+    let source: String
+    var size: CGFloat = 14
+    var color: Color? = Theme.muted   // nil = 继承外面的前景色
+
+    private var brand: NSImage? {
+        switch source {
+        case "github": return BrandIcons.github
+        case "jira": return BrandIcons.jira
+        case "googleDocs": return BrandIcons.googleDocs
+        default: return nil
+        }
+    }
+
+    var body: some View {
+        if let brand {
+            Image(nsImage: brand).renderingMode(.template).resizable().scaledToFit()
+                .frame(width: size, height: size).foregroundStyle(color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.foreground))
+        } else {
+            Image(systemName: "envelope").font(.system(size: size * 0.85)).foregroundStyle(color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.foreground))
+        }
+    }
+}
+
+/// 图标名里 "brand.github / brand.jira / brand.googleDocs" 画官方品牌图标，其余当 SF Symbol 用。
+struct IconImage: View {
+    let name: String
+    var size: CGFloat = 11
+    var body: some View {
+        if name.hasPrefix("brand.") {
+            ServiceIcon(source: String(name.dropFirst(6)), size: size + 1, color: nil)
+        } else {
+            Image(systemName: name).font(.system(size: size))
+        }
     }
 }

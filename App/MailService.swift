@@ -115,6 +115,7 @@ final class MailService: ObservableObject {
         defer { syncing = false }
         monitor.alertMaxAge = Pref.alertMaxAgeSeconds > 0 ? Pref.alertMaxAgeSeconds : .infinity
         do {
+            monitor.newMailAlerts = Pref.newMailAlertMode
             let result = try await monitor.syncOnce()
             lastSync = Date()
             lastError = nil

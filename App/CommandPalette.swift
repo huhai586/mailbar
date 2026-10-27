@@ -75,7 +75,7 @@ struct CommandPalette: View {
 
     private func row(_ command: PaletteCommand, active: Bool) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: command.icon).font(.system(size: 12)).foregroundStyle(Theme.muted).frame(width: 18)
+            IconImage(name: command.icon, size: 12).foregroundStyle(Theme.muted).frame(width: 18)
             Text(command.title).font(Theme.ui(13)).foregroundStyle(Theme.text)
             Spacer()
             Text(command.hint).font(Theme.mono(10.5)).foregroundStyle(Theme.faint)

@@ -99,12 +99,25 @@ public struct GitHubSubject: Equatable, Sendable {
 public enum GitHubText {
     /// 去掉末尾的页脚：以 "--" / "—" 分隔线开头，后面是 "View it on GitHub"、"Reply to this email directly"、
     /// "You are receiving this because …"。找不到分隔线时，只在页脚提示行处截断。
-    public static func stripFooter(_ text: String) -> String {
+    public static func stripFooter(_ text: String) -> String { split(text).body }
+
+    /// 页脚里值得留着的几行（"Reply to this email directly…"、"You are receiving this because you were mentioned."），
+    /// 界面把它们以安静的小字放在正文下面；"Message ID" 这类噪音去掉。没有页脚返回 nil。
+    public static func footerNote(_ text: String) -> String? {
+        let note = split(text).footer
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && $0 != "--" && $0 != "—" && !$0.hasPrefix("Message ID:") }
+            .joined(separator: "\n")
+        return note.isEmpty ? nil : note
+    }
+
+    static func split(_ text: String) -> (body: String, footer: String) {
         let lines = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         // 页脚里会出现的提示行；推送类通知没有 "You are receiving…"，只有 "View it on GitHub"
         let footerHints = ["Message ID:", "You are receiving this because", "Reply to this email directly", "View it on GitHub"]
         guard let marker = lines.lastIndex(where: { line in footerHints.contains { line.contains($0) } }) else {
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (text.trimmingCharacters(in: .whitespacesAndNewlines), "")
         }
         func isSeparator(_ line: String) -> Bool {
             let t = line.trimmingCharacters(in: .whitespaces)
@@ -117,7 +130,8 @@ public enum GitHubText {
         } else {
             while cut > 0 && lines[cut - 1].trimmingCharacters(in: .whitespaces).isEmpty { cut -= 1 }
         }
-        return lines[..<cut].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return (lines[..<cut].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
+                lines[cut...].joined(separator: "\n"))
     }
 
     /// CI 失败通知的摘要：头部信息（仓库、工作流、耗时、结果链接）+ 失败的任务。

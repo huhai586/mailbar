@@ -26,6 +26,24 @@ public struct RuleHit: Equatable, Sendable {
     }
 }
 
+/// 没命中任何提醒规则的新邮件要不要也通知。界面在每次同步前把设置写进来。
+public enum NewMailAlerts: String, Sendable, CaseIterable {
+    /// 每一封新邮件都通知
+    case all
+    /// 只通知真人写的和出问题的机器人（CI 失败等）；例行机器人、推送、其他机器人不通知
+    case important
+    /// 只按规则通知
+    case off
+
+    func accepts(kind: String) -> Bool {
+        switch self {
+        case .all: return true
+        case .important: return kind == MessageKind.human.rawValue || kind == MessageKind.botAlert.rawValue
+        case .off: return false
+        }
+    }
+}
+
 public struct MonitorResult: Sendable {
     public let summary: SyncSummary
     /// 本轮新到、命中规则且需要提醒的邮件（同一封邮件命中多条规则只提醒一次）
@@ -46,6 +64,11 @@ final class MonitorState: @unchecked Sendable {
     private let lock = NSLock()
     private var ruleSet = RuleSet.empty
     private var pending: [RuleHit] = []
+    private var newMailAlertsValue = NewMailAlerts.off
+    var newMailAlerts: NewMailAlerts {
+        get { lock.withLock { newMailAlertsValue } }
+        set { lock.withLock { newMailAlertsValue = newValue } }
+    }
 
     /// 太旧的邮件（比如电脑睡了几天后才同步到）不弹提醒，只记录命中
     static let defaultMaxAlertAge: TimeInterval = 24 * 3600
@@ -74,6 +97,13 @@ final class MonitorState: @unchecked Sendable {
                 let hit = RuleHit(messageId: message.id, threadId: message.threadId, ruleName: rule.name,
                                   subject: message.subject, from: message.from, snippet: message.snippet,
                                   sound: rule.sound, strong: rule.strong)
+                lock.withLock { pending.append(hit) }
+            }
+            // 没命中规则的新邮件：按"新邮件通知"设置也提醒。放在规则命中之后，takeAlerts 按邮件去重时规则命中（声音、强提醒）优先。
+            if mode == .incremental, newMailAlerts.accepts(kind: message.kind), isAlertable(message) {
+                let hit = RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "新邮件",
+                                  subject: message.subject, from: message.from, snippet: message.snippet,
+                                  sound: nil, strong: false)
                 lock.withLock { pending.append(hit) }
             }
         }
@@ -159,6 +189,12 @@ public final class MailMonitor: @unchecked Sendable {
     public func loadOlder(limit: Int) async throws -> Int {
         _ = refreshRules()
         return try await engine.loadOlder(limit: limit)
+    }
+
+    /// 没命中提醒规则的新邮件要不要通知（默认只按规则）。
+    public var newMailAlerts: NewMailAlerts {
+        get { state.newMailAlerts }
+        set { state.newMailAlerts = newValue }
     }
 
     public func syncOnce(forceFull: Bool = false) async throws -> MonitorResult {

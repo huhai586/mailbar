@@ -7,6 +7,13 @@ struct SidebarView: View {
     @ObservedObject var service: MailService
 
     @AppStorage(Pref.sidebarShown) private var shownRaw = "UNREAD,ALL"
+    @AppStorage("sidebarCollapsedGroups") private var collapsedRaw = ""
+    private var collapsed: Set<String> { Set(collapsedRaw.split(separator: ",").map(String.init)) }
+    private func toggleGroup(_ key: String) {
+        var set = collapsed
+        if set.contains(key) { set.remove(key) } else { set.insert(key) }
+        collapsedRaw = set.sorted().joined(separator: ",")
+    }
     private var shown: Set<String> { Pref.parseShown(shownRaw) }
     private var userLabels: [LabelInfo] { reader.labels.filter { $0.type == "user" && shown.contains($0.id) } }
     private var categories: [LabelInfo] {
@@ -14,6 +21,27 @@ struct SidebarView: View {
     }
     private var mailboxes: [SystemMailbox] { SystemMailbox.all.filter { shown.contains($0.key) } }
     private var enabledRules: [Rule] { service.rules.filter(\.enabled) }
+    /// 规则按来源分组：Jira（名字以 Jira 开头或发件人是 Atlassian）、文档、GitHub（按通知原因匹配的）、其他。
+    private struct RuleGroup { let key: String; let title: String; let prefix: String?; let rules: [Rule] }
+    private func groupKey(_ rule: Rule) -> String {
+        // 推荐规则模板里的规则，直接按模板归属（比如 "CI 失败" 是关键词规则，但它属于 GitHub）
+        if RuleTemplates.github.contains(where: { $0.name == rule.name }) { return "github" }
+        if RuleTemplates.jira.contains(where: { $0.name == rule.name }) { return "jira" }
+        if RuleTemplates.googleDocs.contains(where: { $0.name == rule.name }) { return "googleDocs" }
+        let name = rule.name.lowercased()
+        if name.hasPrefix("jira") || rule.from.contains(where: { $0.lowercased().contains("atlassian") || $0.lowercased().contains("jira") }) { return "jira" }
+        if name.hasPrefix("文档") || rule.from.contains(where: { $0.lowercased().contains("google") }) { return "googleDocs" }
+        if !rule.reasons.isEmpty { return "github" }
+        return "other"
+    }
+    private var ruleGroups: [RuleGroup] {
+        let grouped = Dictionary(grouping: enabledRules, by: groupKey)
+        return ReaderModel.sourceOrder.compactMap { key in
+            guard let rules = grouped[key], !rules.isEmpty else { return nil }
+            let title = key == "googleDocs" ? "Google 文档" : ReaderModel.style(forSource: key).title
+            return RuleGroup(key: key, title: title, prefix: key == "jira" ? "Jira" : (key == "googleDocs" ? "文档" : nil), rules: rules)
+        }
+    }
     private func ruleCount(_ name: String) -> Int { reader.ruleCounts.first { $0.name == name }?.count ?? 0 }
 
     var body: some View {
@@ -24,7 +52,7 @@ struct SidebarView: View {
                     section("分诊") {
                         row(icon: "exclamationmark.bubble.fill", iconColor: Theme.accent, title: "待处理", mailbox: .attention,
                             badge: reader.stats.attention, badgeColor: Theme.accent)
-                        row(icon: "bolt.fill", iconColor: Theme.muted, title: "重点", mailbox: .important,
+                        row(icon: "star.fill", iconColor: Theme.muted, title: "重点", mailbox: .important,
                             badge: reader.stats.importantUnread, badgeColor: Theme.accent)
                     }
                     section("来源") {
@@ -33,8 +61,11 @@ struct SidebarView: View {
                         }
                     }
                     section("规则", action: ("slider.horizontal.3", "管理规则", { service.openSettings?("rules") })) {
-                        ForEach(enabledRules, id: \.name) { rule in
-                            ruleRow(rule)
+                        ForEach(ruleGroups, id: \.key) { group in
+                            ruleGroupHeader(group)
+                            if !collapsed.contains(group.key) {
+                                ForEach(group.rules, id: \.name) { rule in ruleRow(rule, indent: true, stripPrefix: group.prefix) }
+                            }
                         }
                         if enabledRules.isEmpty {
                             Button { service.addRecommendedRules() } label: {
@@ -122,7 +153,7 @@ struct SidebarView: View {
         let selected = reader.mailbox == .label("INBOX") && reader.sourceFilter == source
         return Button { reader.selectSource(source) } label: {
             HStack(spacing: 8) {
-                Image(systemName: style.icon).font(.system(size: 11.5)).foregroundStyle(selected ? Theme.accent : Theme.muted).frame(width: 16)
+                ServiceIcon(source: source, size: 13, color: selected ? Theme.accent : Theme.muted).frame(width: 16)
                 Text(style.title == "文档" ? "Google 文档" : style.title)
                     .font(Theme.ui(12.5, selected ? .semibold : .regular)).foregroundStyle(selected ? Theme.text : Theme.text.opacity(0.88)).lineLimit(1)
                 Spacer(minLength: 4)
@@ -135,6 +166,16 @@ struct SidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    /// 分组里已经有来源名了，子项不用再带 "Jira · " 这样的前缀。
+    private func displayName(_ name: String, strip prefix: String?) -> String {
+        guard let prefix else { return name }
+        for separator in [" · ", "·", " ", "："] where name.hasPrefix(prefix + separator) {
+            let rest = name.dropFirst(prefix.count + separator.count).trimmingCharacters(in: .whitespaces)
+            if !rest.isEmpty { return rest }
+        }
+        return name
     }
 
     private func row(icon: String, iconColor: Color, title: String, mailbox: Mailbox, badge: Int, badgeColor: Color) -> some View {
@@ -154,14 +195,35 @@ struct SidebarView: View {
         .buttonStyle(.plain)
     }
 
-    private func ruleRow(_ rule: Rule) -> some View {
+    /// 规则分组的父行：点一下折叠 / 展开；折叠时把这组里的新消息数放在后面，提醒有东西没看。
+    private func ruleGroupHeader(_ group: RuleGroup) -> some View {
+        let isCollapsed = collapsed.contains(group.key)
+        let total = group.rules.reduce(0) { $0 + ruleCount($1.name) }
+        return Button { withAnimation(.easeInOut(duration: 0.15)) { toggleGroup(group.key) } } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.faint)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90)).frame(width: 10)
+                ServiceIcon(source: group.key, size: 12, color: Theme.muted).frame(width: 14)
+                Text(group.title).font(Theme.ui(12.5, .semibold)).foregroundStyle(Theme.text.opacity(0.9)).lineLimit(1)
+                Spacer(minLength: 4)
+                if isCollapsed, total > 0 { CountBadge(count: total, color: Theme.accent) }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, Theme.pad(4.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointerStyle(.link)
+    }
+
+    private func ruleRow(_ rule: Rule, indent: Bool = false, stripPrefix: String? = nil) -> some View {
         let mailbox = Mailbox.rule(rule.name)
         let selected = reader.mailbox == mailbox && reader.sourceFilter == nil
         let color = Theme.color(for: rule)
         return Button { reader.select(mailbox) } label: {
             HStack(spacing: 8) {
                 Circle().fill(color).frame(width: 7, height: 7).frame(width: 16)
-                Text(rule.name).font(Theme.ui(12.5, selected ? .semibold : .regular)).foregroundStyle(selected ? Theme.text : Theme.text.opacity(0.88)).lineLimit(1)
+                Text(displayName(rule.name, strip: stripPrefix)).font(Theme.ui(12.5, selected ? .semibold : .regular)).foregroundStyle(selected ? Theme.text : Theme.text.opacity(0.88)).lineLimit(1)
                 if rule.notify {
                     Image(systemName: rule.strong ? "exclamationmark.triangle.fill" : "bell.fill")
                         .font(.system(size: 8)).foregroundStyle(rule.strong ? Theme.red : Theme.faint)
@@ -169,7 +231,8 @@ struct SidebarView: View {
                 Spacer(minLength: 4)
                 CountBadge(count: ruleCount(rule.name), color: Theme.muted)
             }
-            .padding(.horizontal, 10)
+            .padding(.leading, indent ? 26 : 10)
+            .padding(.trailing, 10)
             .padding(.vertical, Theme.pad(4.5))
             .navSelected(selected)
             .contentShape(Rectangle())

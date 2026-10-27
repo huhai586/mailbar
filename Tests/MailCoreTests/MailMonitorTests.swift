@@ -197,3 +197,41 @@ private let alertRules = """
         #expect(ids == ["a", "b"])
     }
 }
+
+@Suite struct NewMailAlertTests {
+    @Test func defaultOnlyAlertsForRules() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "lunch?")
+        #expect(try await h.monitor.syncOnce().alerts.isEmpty)
+    }
+
+    @Test func allModeAlertsEveryNewMailAndRulesWin() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.newMailAlerts = .all
+        _ = try await h.monitor.syncOnce()
+        h.api.add("p", subject: "lunch?")
+        h.api.add("q", subject: "磁盘告警")
+        let result = try await h.monitor.syncOnce()
+        let byId = Dictionary(uniqueKeysWithValues: result.alerts.map { ($0.messageId, $0) })
+        #expect(byId["p"]?.ruleName == "新邮件")
+        #expect(byId["q"]?.ruleName == "告警")      // 命中规则的邮件保留规则的声音和名字
+        #expect(byId["q"]?.sound == "Sosumi")
+        #expect(result.alerts.count == 2)
+    }
+
+    @Test func fullSyncNeverAlertsEvenInAllMode() async throws {
+        let h = try Harness(rules: alertRules); defer { h.cleanup() }
+        h.monitor.newMailAlerts = .all
+        h.api.add("a", subject: "hello")
+        #expect(try await h.monitor.syncOnce().alerts.isEmpty)
+    }
+
+    @Test func importantModeSkipsRoutineBots() {
+        #expect(NewMailAlerts.important.accepts(kind: "human"))
+        #expect(NewMailAlerts.important.accepts(kind: "bot_alert"))
+        #expect(!NewMailAlerts.important.accepts(kind: "bot_routine"))
+        #expect(!NewMailAlerts.important.accepts(kind: "push"))
+        #expect(!NewMailAlerts.off.accepts(kind: "human"))
+    }
+}
