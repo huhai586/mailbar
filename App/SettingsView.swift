@@ -57,8 +57,8 @@ private struct GeneralSettingsView: View {
         Form {
             Section("外观") {
                 Picker("主题", selection: $appearance) {
-                    Text("深色").tag("dark")
-                    Text("浅色").tag("light")
+                    Text("终端（深色）").tag("dark")
+                    Text("纸质（浅色）").tag("light")
                     Text("跟随系统").tag("system")
                 }
                 Picker("列表密度", selection: $density) {

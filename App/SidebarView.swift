@@ -22,10 +22,10 @@ struct SidebarView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     section("分诊") {
-                        row(icon: "exclamationmark.bubble.fill", iconColor: Theme.orange, title: "待处理", mailbox: .attention,
-                            badge: reader.stats.attention, badgeColor: Theme.orange)
-                        row(icon: "bolt.fill", iconColor: Theme.yellow, title: "重点", mailbox: .important,
-                            badge: reader.stats.importantUnread, badgeColor: Theme.yellow)
+                        row(icon: "exclamationmark.bubble.fill", iconColor: Theme.accent, title: "待处理", mailbox: .attention,
+                            badge: reader.stats.attention, badgeColor: Theme.accent)
+                        row(icon: "bolt.fill", iconColor: Theme.muted, title: "重点", mailbox: .important,
+                            badge: reader.stats.importantUnread, badgeColor: Theme.accent)
                     }
                     section("来源") {
                         ForEach(ReaderModel.sourceOrder, id: \.self) { source in
@@ -100,7 +100,7 @@ struct SidebarView: View {
                                         @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack {
-                Text(title).font(Theme.mono(10.5, .semibold)).tracking(0.6).foregroundStyle(Theme.faint)
+                Text(title).font(Theme.mono(10, .semibold)).tracking(1.6).foregroundStyle(Theme.faint)
                 Spacer()
                 if let action {
                     Button(action: action.run) { Image(systemName: action.icon).font(.system(size: 10)) }
@@ -122,16 +122,16 @@ struct SidebarView: View {
         let selected = reader.mailbox == .label("INBOX") && reader.sourceFilter == source
         return Button { reader.selectSource(source) } label: {
             HStack(spacing: 8) {
-                Image(systemName: style.icon).font(.system(size: 11.5)).foregroundStyle(color).frame(width: 16)
+                Image(systemName: style.icon).font(.system(size: 11.5)).foregroundStyle(selected ? Theme.accent : Theme.muted).frame(width: 16)
                 Text(style.title == "文档" ? "Google 文档" : style.title)
                     .font(Theme.ui(12.5, selected ? .semibold : .regular)).foregroundStyle(selected ? Theme.text : Theme.text.opacity(0.88)).lineLimit(1)
                 Spacer(minLength: 4)
-                if count.unreadGroups > 0 { CountBadge(count: count.unreadGroups, color: color) }
+                if count.unreadGroups > 0 { CountBadge(count: count.unreadGroups, color: Theme.muted) }
                 else { Text("\(count.groups)").font(Theme.mono(10.5)).foregroundStyle(Theme.faint) }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4.5)
-            .background(selected ? Theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .navSelected(selected)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -148,7 +148,7 @@ struct SidebarView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4.5)
-            .background(selected ? Theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .navSelected(selected)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -167,11 +167,11 @@ struct SidebarView: View {
                         .font(.system(size: 8)).foregroundStyle(rule.strong ? Theme.red : Theme.faint)
                 }
                 Spacer(minLength: 4)
-                CountBadge(count: ruleCount(rule.name), color: color)
+                CountBadge(count: ruleCount(rule.name), color: Theme.muted)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4.5)
-            .background(selected ? Theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .navSelected(selected)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

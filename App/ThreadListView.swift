@@ -339,8 +339,8 @@ private struct ThreadRow: View {
     /// 左侧色条：出问题红色，待处理橙色，否则取命中规则的颜色。
     private var barColor: Color {
         if thread.alertUnread > 0 { return Theme.red }
-        if thread.needsAttention { return Theme.orange }
-        return matched.first.map { Theme.color(for: $0) } ?? .clear
+        if thread.needsAttention { return Theme.accent }
+        return .clear
     }
 
     /// 谁最近动了：优先真人（最新一封往往是机器人）。
@@ -349,103 +349,133 @@ private struct ThreadRow: View {
         return MailAddress.parse(from).displayName
     }
 
+    @Environment(\.colorScheme) private var scheme
+
+    private var important: Bool { thread.humanUnread > 0 || thread.alertUnread > 0 || (!isPR && thread.isUnread) }
+
     var body: some View {
         let info = info
         let title = info?.title ?? thread.subject
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             Rectangle().fill(barColor).frame(width: 3)
             VStack(alignment: .leading, spacing: compact ? 3 : 5) {
-                HStack(spacing: 6) {
-                    // 未读圆点：有真人 / 出问题的未读是蓝点；只有例行机器人未读是灰点
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    // 未读圆点：有真人 / 出问题的未读是强调色；只有例行机器人未读是灰点
                     Circle()
                         .fill(thread.isUnread ? (thread.onlyRoutineUnread && isPR ? Theme.faint : Theme.accent) : .clear)
-                        .frame(width: 7, height: 7)
-                    Text(actor)
-                        .font(Theme.mono(12, thread.humanUnread > 0 || (!isPR && thread.isUnread) ? .semibold : .regular))
-                        .foregroundStyle(thread.isUnread ? Theme.text : Theme.muted)
-                        .lineLimit(1)
-                    if let context = info?.context, info?.service == .github {
-                        Text(context).font(Theme.mono(11)).foregroundStyle(Theme.faint).lineLimit(1).truncationMode(.middle)
-                            .layoutPriority(-1)
-                    }
+                        .frame(width: 6, height: 6)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
+                    Text(title.isEmpty ? "（无主题）" : title)
+                        .font(Theme.title(14, important ? .semibold : .regular, scheme: scheme))
+                        .foregroundStyle(thread.isUnread && !(thread.onlyRoutineUnread && isPR) ? Theme.text : Theme.text.opacity(0.65))
+                        .lineLimit(compact ? 1 : 2)
                     Spacer(minLength: 4)
-                    if thread.hasAttachments { Image(systemName: "paperclip").font(.system(size: 10)).foregroundStyle(Theme.faint) }
-                    Text(DateText.list(thread.date)).font(Theme.mono(11)).foregroundStyle(Theme.faint)
+                    VStack(alignment: .trailing, spacing: 5) {
+                        HStack(spacing: 4) {
+                            if thread.hasAttachments { Image(systemName: "paperclip").font(.system(size: 10)).foregroundStyle(Theme.faint) }
+                            Text(DateText.list(thread.date)).font(Theme.mono(11)).foregroundStyle(Theme.faint)
+                        }
+                        if isPR { activityBar }
+                    }
                 }
-                Text(title.isEmpty ? "（无主题）" : title)
-                    .font(Theme.ui(13, thread.humanUnread > 0 || thread.alertUnread > 0 || (!isPR && thread.isUnread) ? .semibold : .regular))
-                    .foregroundStyle(thread.isUnread && !(thread.onlyRoutineUnread && isPR) ? Theme.text : Theme.text.opacity(0.7))
-                    .lineLimit(compact ? 1 : 2)
-                    .padding(.leading, 13)
-                tagLine(info).padding(.leading, 13)
-                if isPR { activityLine.padding(.leading, 13) }
+                metaLine(info).padding(.leading, 13)
+                statusLine(info).padding(.leading, 13)
             }
-            .padding(.leading, 6)
+            .padding(.leading, 8)
             .padding(.trailing, 12)
             .padding(.vertical, compact ? 7 : 10)
         }
-        .background(selected ? Theme.selection : (hovering ? Theme.hover : .clear))
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.5)).frame(height: 0.5) }
+        .background(selected ? Theme.accent.opacity(0.07) : (hovering ? Theme.hover : .clear))
+        .overlay { if selected { Rectangle().strokeBorder(Theme.accent.opacity(0.35), lineWidth: 1) } }
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.7)).frame(height: 0.5) }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
     }
 
-    /// PR 的活动摘要：几条新评论、几次失败、几条例行消息、Jira 联动——一眼看出这个 PR 的"热度"来自哪里。
-    private var activityLine: some View {
-        HStack(spacing: 8) {
-            if thread.humanUnread > 0 {
-                Label("\(thread.humanUnread) 条新评论", systemImage: "person.fill").foregroundStyle(Theme.accent)
-            } else if thread.humanCount > 0 {
-                Label("\(thread.humanCount) 条评论", systemImage: "person").foregroundStyle(Theme.muted)
-            }
-            if thread.alertCount > 0 {
-                Label("\(thread.alertUnread > 0 ? thread.alertUnread : thread.alertCount) 次失败", systemImage: "xmark.octagon.fill").foregroundStyle(Theme.red)
-            }
-            if thread.routineCount > 0 {
-                Label("例行 \(thread.routineCount)", systemImage: "gearshape").foregroundStyle(Theme.faint)
-            }
-            if thread.jiraCount > 0 {
-                Label("Jira \(thread.jiraCount)", systemImage: "checklist").foregroundStyle(Theme.color(for: .jira))
-            }
-        }
-        .labelStyle(CompactLabelStyle())
-        .font(Theme.mono(10.5))
+    /// 谁、在哪：发件人 · 仓库 #PR · Jira 编号。全是安静的灰色小字，不再是一堆药丸。
+    private func metaLine(_ info: NotificationInfo?) -> some View {
+        var parts: [String] = [actor]
+        if let context = info?.context, info?.service == .github { parts.append(context) }
+        if let reference = info?.reference { parts.append(reference.replacingOccurrences(of: "PR ", with: "")) }
+        if info?.service == .github, let key = info?.jiraKey { parts.append(key) }
+        return Text(parts.joined(separator: " · "))
+            .font(Theme.mono(11, thread.humanUnread > 0 ? .medium : .regular))
+            .foregroundStyle(thread.humanUnread > 0 ? Theme.muted : Theme.faint)
+            .lineLimit(1).truncationMode(.middle)
     }
 
+    /// 右侧的细活动条：评论 / 失败 / 例行各占多少，一眼看出这个 PR 的热度来自哪里。
+    private var activityBar: some View {
+        let parts: [(Int, Color)] = [(thread.humanCount, Theme.text), (thread.alertCount, Theme.red), (thread.routineCount, Theme.faint.opacity(0.45))]
+        let total = max(1, parts.reduce(0) { $0 + $1.0 })
+        return HStack(spacing: 1) {
+            ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+                if part.0 > 0 { Rectangle().fill(part.1).frame(width: max(3, 56 * CGFloat(part.0) / CGFloat(total))) }
+            }
+        }
+        .frame(width: 56, height: 3, alignment: .trailing)
+        .clipShape(RoundedRectangle(cornerRadius: 1.5))
+    }
+
+    private func symbol(for label: String) -> String {
+        if label.contains("Review") { return "eye" }
+        if label.contains("提及") || label.contains("提到") { return "at" }
+        if label.contains("指派") { return "person.crop.circle.badge.plus" }
+        return "circle.fill"
+    }
+
+    private func status(_ icon: String?, _ text: String, _ color: Color, weight: Font.Weight = .regular) -> some View {
+        HStack(spacing: 3) {
+            if let icon { Image(systemName: icon).font(.system(size: 9, weight: .semibold)) }
+            Text(text)
+        }
+        .font(Theme.mono(11, weight))
+        .foregroundStyle(color)
+        .fixedSize()
+    }
+
+    /// 只给"有含义的事"上色：需要你（强调色）、出问题（红）；规则是小圆点 + 文字；其余全是灰。
     @ViewBuilder
-    private func tagLine(_ info: NotificationInfo?) -> some View {
-        let serviceColor = info.map { Theme.color(for: $0.service) } ?? Theme.muted
+    private func statusLine(_ info: NotificationInfo?) -> some View {
         let relationReason = Self.relation(thread.reasons)
         // 规则已经表达了这层关系（比如规则"请求你 Review"按 review_requested 匹配）就不再重复显示关系标签
         let coveredByRule = relationReason.map { reason in matched.contains { $0.reasons.contains(reason) } } ?? false
         let shownRules = matched.filter { $0.name != viewingRule }
         let relation = coveredByRule ? nil : relationReason.flatMap(GitHubReason.event(for:)).flatMap { $0.notable ? $0 : nil }
-        let hasTags = !shownRules.isEmpty || info?.reference != nil || relation != nil || (!isPR && info?.event != nil)
-        if hasTags {
-            FlowLayout(spacing: 4, lineSpacing: 3) {
-                if let relation { Chip(text: relation.label, color: Theme.color(named: relation.color), mono: false) }
+        let event = !isPR ? info?.event : nil
+        let hasAny = !shownRules.isEmpty || relation != nil || event != nil || (isPR && (thread.humanCount > 0 || thread.alertCount > 0 || thread.routineCount > 0 || thread.jiraCount > 0))
+        if hasAny {
+            FlowLayout(spacing: 10, lineSpacing: 3) {
+                if let relation { status(symbol(for: relation.label), relation.label, relation.color == "red" ? Theme.red : Theme.accent, weight: .medium) }
+                if let event, event.notable { status(symbol(for: event.label), event.label, Theme.accent, weight: .medium) }
                 ForEach(shownRules.prefix(3), id: \.name) { rule in
                     if rule.name != relation?.label {
-                        Chip(text: rule.name, color: Theme.color(for: rule), filled: Theme.priority(of: rule) == 3, mono: false)
+                        HStack(spacing: 4) {
+                            Circle().fill(Theme.color(for: rule)).frame(width: 5, height: 5)
+                            Text(rule.name)
+                        }
+                        .font(Theme.mono(11, Theme.priority(of: rule) >= 2 ? .medium : .regular))
+                        .foregroundStyle(Theme.priority(of: rule) >= 2 ? Theme.accent : Theme.muted)
+                        .fixedSize()
                     }
                 }
-                if shownRules.count > 3 { Chip(text: "+\(shownRules.count - 3)", color: Theme.muted) }
-                if let reference = info?.reference { Chip(text: reference, color: serviceColor) }
-                if info?.service == .github, let key = info?.jiraKey { Chip(text: key, color: Theme.color(for: .jira)) }
-                if !isPR, let event = info?.event { Chip(text: event.label, color: Theme.color(named: event.color), mono: false) }
+                if shownRules.count > 3 { status(nil, "+\(shownRules.count - 3)", Theme.faint) }
+                if isPR {
+                    if thread.alertCount > 0 {
+                        status("exclamationmark.triangle.fill", "\(thread.alertUnread > 0 ? thread.alertUnread : thread.alertCount) 次失败", Theme.red, weight: .medium)
+                    }
+                    if thread.humanUnread > 0 {
+                        status("person.fill", "\(thread.humanUnread) 条新评论", Theme.text, weight: .medium)
+                    } else if thread.humanCount > 0 {
+                        status("person", "\(thread.humanCount) 条评论", Theme.muted)
+                    }
+                    if thread.routineCount > 0 { status("gearshape", "例行 \(thread.routineCount)", Theme.faint) }
+                    if thread.jiraCount > 0 { status("checklist", "Jira \(thread.jiraCount)", Theme.faint) }
+                }
+                if let event, !event.notable { status(nil, event.label, Theme.muted) }
             }
         } else if showSnippet, !thread.snippet.isEmpty, !isPR {
             Text(thread.snippet).font(Theme.ui(12)).foregroundStyle(Theme.faint).lineLimit(1)
-        }
-    }
-}
-
-/// 图标和文字挨得更紧的标签样式。
-private struct CompactLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 3) {
-            configuration.icon.font(.system(size: 9))
-            configuration.title
         }
     }
 }

@@ -32,6 +32,7 @@ private struct ThreadConversation: View {
     @State private var showAllOlder = false
     @State private var didInitExpansion = false
     /// 下一次点"被 @ 提及"要跳到第几处；scrollRequest 的 nonce 保证连续跳同一封也会触发滚动
+    @Environment(\.colorScheme) private var scheme
     @State private var mentionCursor = 0
     @State private var scrollRequest: (id: String, nonce: Int)?
     @State private var flashID: String?
@@ -124,7 +125,7 @@ private struct ThreadConversation: View {
                                             onSetKind: { service.setKind(forSender: MailAddress.parse(message.from).address, $0) },
                                             githubLogin: reader.githubLogin,
                                             expanded: binding(message.id))
-                                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).stroke(Theme.orange, lineWidth: 1.5).opacity(flashID == message.id ? 1 : 0))
+                                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).stroke(Theme.accent, lineWidth: 1.5).opacity(flashID == message.id ? 1 : 0))
                                     .id(message.id)
                             case .routine(let run):
                                 RoutineRunRow(messages: run, info: { reader.info(for: $0) })
@@ -208,8 +209,8 @@ private struct ThreadConversation: View {
             }
             .foregroundStyle(active ? Theme.text : Theme.muted)
             .padding(.horizontal, 9)
-            .padding(.vertical, 3.5)
-            .background(active ? Theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .padding(.vertical, 5)
+            .overlay(alignment: .bottom) { if active { Rectangle().fill(Theme.accent).frame(height: 2).padding(.horizontal, 4) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -263,7 +264,7 @@ private struct ThreadConversation: View {
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
                 Text((info?.title ?? subject).isEmpty ? "（无主题）" : (info?.title ?? subject))
-                    .font(Theme.ui(18, .semibold))
+                    .font(Theme.title(19, .semibold, scheme: scheme))
                     .foregroundStyle(Theme.text)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -556,9 +557,9 @@ private struct MessageCard: View {
                 content
             }
         }
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(message.isUnread ? Theme.accent.opacity(0.55) : Theme.border, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(message.isUnread ? Theme.accent.opacity(0.55) : Theme.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var headerRow: some View {

@@ -15,30 +15,32 @@ enum Theme {
         })
     }
 
+    // 两套主题：深色 = 「终端控制台」（暖黑底 + 琥珀招牌色），浅色 = 「纸质」（暖白纸 + 深绿墨色）。
+    // 颜色只为"有含义的事"服务：accent = 需要你；red = 出问题；其余都收成灰。
     // 表面
-    static let bg = dynamic(0x0D1117, 0xFFFFFF)
-    static let panel = dynamic(0x161B22, 0xF6F8FA)
-    static let raised = dynamic(0x21262D, 0xEAEEF2)
-    static let border = dynamic(0x30363D, 0xD0D7DE)
-    static let hover = dynamic(0xFFFFFF, 0x000000, alpha: 0.04)
-    static let selection = dynamic(0x1F6FEB, 0x0969DA, alpha: 0.22)
+    static let bg = dynamic(0x16130F, 0xFAF7F1)
+    static let panel = dynamic(0x1D1912, 0xF3EFE6)
+    static let raised = dynamic(0x2A251D, 0xE9E3D6)
+    static let border = dynamic(0x332D22, 0xE0D9CB)
+    static let hover = dynamic(0xFFF1D6, 0x000000, alpha: 0.04)
+    static let selection = dynamic(0xF5A524, 0x2F5D46, alpha: 0.16)
 
     // 文字
-    static let text = dynamic(0xE6EDF3, 0x1F2328)
-    static let muted = dynamic(0x8B949E, 0x59636E)
-    static let faint = dynamic(0x6E7681, 0x818B98)
+    static let text = dynamic(0xE9E3D6, 0x1F1D19)
+    static let muted = dynamic(0x8A8273, 0x6B665A)
+    static let faint = dynamic(0x6F6858, 0x8B8577)
 
     // 语义色
-    static let accent = dynamic(0x58A6FF, 0x0969DA)
-    static let red = dynamic(0xF85149, 0xCF222E)
-    static let orange = dynamic(0xDB6D28, 0xBC4C00)
-    static let yellow = dynamic(0xD29922, 0x9A6700)
-    static let green = dynamic(0x3FB950, 0x1A7F37)
-    static let cyan = dynamic(0x39C5CF, 0x1B7C83)
-    static let blue = accent
-    static let purple = dynamic(0xBC8CFF, 0x8250DF)
-    static let pink = dynamic(0xF778BA, 0xBF3989)
-    static let gray = dynamic(0x8B949E, 0x6E7781)
+    static let accent = dynamic(0xF5A524, 0x2F5D46)
+    static let red = dynamic(0xFF5F4A, 0xB3402A)
+    static let orange = dynamic(0xE8803A, 0xB5651D)
+    static let yellow = dynamic(0xD9B44A, 0x8F6B12)
+    static let green = dynamic(0x7FB069, 0x4A7A3A)
+    static let cyan = dynamic(0x5FB3A8, 0x2D7A78)
+    static let blue = dynamic(0x7AA2C8, 0x3B6A8F)
+    static let purple = dynamic(0xB59AE0, 0x6B4FA0)
+    static let pink = dynamic(0xE58AB0, 0xA83E6B)
+    static let gray = dynamic(0x8A8273, 0x7A756A)
 
     static func color(named name: String) -> Color {
         switch name {
@@ -64,7 +66,7 @@ enum Theme {
     /// 各服务在界面里的代表色。
     static func color(for service: NotificationInfo.Service) -> Color {
         switch service {
-        case .github: return accent
+        case .github: return blue
         case .jira: return cyan
         case .googleDocs: return green
         }
@@ -83,6 +85,12 @@ enum Theme {
 
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight)
+    }
+
+    /// 标题字体：终端主题（深色）用等宽，纸质主题（浅色）用衬线。
+    static func title(_ size: CGFloat, _ weight: Font.Weight = .regular, scheme: ColorScheme) -> Font {
+        scheme == .dark ? .system(size: size - 1, weight: weight, design: .monospaced)
+                        : .system(size: size + 2, weight: weight, design: .serif)
     }
 
     static let radius: CGFloat = 6

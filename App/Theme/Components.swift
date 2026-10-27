@@ -35,16 +35,15 @@ struct LinkChip: View {
     var body: some View {
         Button { NSWorkspace.shared.open(url) } label: {
             HStack(spacing: 3) {
-                if let icon { Image(systemName: icon).font(.system(size: 8, weight: .bold)) }
-                Text(text).underline().lineLimit(1)
-                Image(systemName: "arrow.up.right").font(.system(size: 7, weight: .bold))
+                if let icon { Image(systemName: icon).font(.system(size: 9, weight: .semibold)) }
+                Text(text).underline(true, pattern: .dot).lineLimit(1)
+                Image(systemName: "arrow.up.right").font(.system(size: 8, weight: .bold)).opacity(0.7)
             }
-            .font(Theme.mono(10.5, .medium))
-            .foregroundStyle(Theme.accent)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1.5)
-            .background(Theme.accent.opacity(hovering ? 0.28 : 0.12), in: RoundedRectangle(cornerRadius: 4))
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.accent.opacity(hovering ? 0.9 : 0.55), lineWidth: 0.8))
+            .font(Theme.mono(11.5, .medium))
+            .foregroundStyle(hovering ? Theme.text : Theme.blue)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(Theme.blue.opacity(hovering ? 0.14 : 0), in: RoundedRectangle(cornerRadius: 4))
             .fixedSize()
         }
         .buttonStyle(.plain)
@@ -116,9 +115,6 @@ struct CountBadge: View {
             Text(count > 999 ? "999+" : "\(count)")
                 .font(Theme.mono(10.5, .semibold))
                 .foregroundStyle(color)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(color.opacity(0.14), in: Capsule())
         }
     }
 }
@@ -138,5 +134,15 @@ struct KeyHint: View {
             Text(label).font(Theme.ui(10.5))
         }
         .foregroundStyle(Theme.muted)
+    }
+}
+
+extension View {
+    /// 侧栏选中项：淡淡的强调色底 + 左边一条 2px 色带。
+    func navSelected(_ selected: Bool) -> some View {
+        background(selected ? Theme.accent.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(alignment: .leading) {
+                if selected { Capsule().fill(Theme.accent).frame(width: 2, height: 14).offset(x: -1) }
+            }
     }
 }

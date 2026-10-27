@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MailBar 设计稿 · 终端 / 纸质</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0a08;font-family:-apple-system,"PingFang SC",sans-serif;padding:40px 0 80px}
+h2.cap{font:500 13px/1 -apple-system,"PingFang SC",sans-serif;letter-spacing:.14em;color:#8c8474;text-align:center;margin:0 0 16px;text-transform:uppercase}
+.stage{width:1440px;margin:0 auto 56px;transform-origin:top left}
+.win{width:1440px;height:900px;border-radius:12px;overflow:hidden;display:grid;grid-template-columns:232px 456px 1fr;grid-template-rows:1fr 28px;position:relative;box-shadow:0 0 0 1px var(--line),0 40px 80px -30px #000c}
+.console{--bg:#14110d;--side:#0f0d0a;--panel:#191510;--line:#27221a;--line2:#1f1b14;--ink:#ece6d9;--ink2:#b9b09c;--mute:#8c8474;--faint:#615a4c;--acc:#f2a33a;--accsoft:#f2a33a14;--accline:#f2a33a55;--red:#ff6a55;--sel:#f2a33a10;--title:ui-monospace,"SF Mono",Menlo,monospace;--tw:500;--ts:13.5px;--ui:ui-monospace,"SF Mono",Menlo,monospace}
+.paper{--bg:#f8f4ec;--side:#efe9db;--panel:#f2ecdf;--line:#ddd5c3;--line2:#e6dfce;--ink:#1c1a15;--ink2:#4a463b;--mute:#807a6a;--faint:#a39c89;--acc:#2b5a43;--accsoft:#2b5a4312;--accline:#2b5a4366;--red:#a8402b;--sel:#2b5a430f;--title:"Iowan Old Style","Songti SC",Georgia,serif;--tw:500;--ts:16px;--ui:-apple-system,"PingFang SC",sans-serif}
+.win{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:12.5px}
+.side{background:var(--side);border-right:1px solid var(--line);padding:44px 12px 12px;display:flex;flex-direction:column;position:relative}
+.dots{position:absolute;left:16px;top:16px;display:flex;gap:8px}.dots i{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.brand{display:flex;align-items:center;gap:9px;padding:6px 8px 18px;font:500 14px var(--title);letter-spacing:.02em}
+.brand b{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--acc);display:grid;place-items:center;color:var(--acc);font:600 12px var(--title)}
+.sec{font-size:10px;letter-spacing:.16em;color:var(--faint);padding:14px 8px 6px;text-transform:uppercase}
+.nav{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;color:var(--ink2);font-size:12.5px;position:relative}
+.nav i{width:14px;text-align:center;color:var(--mute);font-style:normal;font-size:11px}
+.nav em{margin-left:auto;font-style:normal;color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
+.nav.on{background:var(--accsoft);color:var(--ink)}.nav.on i{color:var(--acc)}.nav.on::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:2px;background:var(--acc);border-radius:1px}
+.nav.hot em{color:var(--acc);font-weight:600}
+.rd{width:6px;height:6px;border-radius:50%;display:inline-block}
+.sfoot{margin-top:auto;border-top:1px solid var(--line);padding:12px 8px 0;display:flex;align-items:center;justify-content:space-between;color:var(--mute);font-size:11px}
+.list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.lhead{padding:44px 20px 12px;display:flex;align-items:baseline;gap:10px}
+.lhead h3{font:var(--tw) 18px var(--title)}.lhead span{color:var(--faint);font-size:12px}
+.seg{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}.seg b{font-weight:400;padding:3px 10px;color:var(--mute);font-size:11.5px}.seg b.on{background:var(--panel);color:var(--ink)}
+.search{margin:0 20px 10px;border:1px solid var(--line);border-radius:7px;padding:7px 11px;color:var(--faint);font-size:12px;display:flex;gap:8px}
+.lsec{display:flex;align-items:center;gap:8px;padding:9px 20px;color:var(--mute);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);background:var(--panel)}
+.lsec em{font-style:normal;color:var(--faint);letter-spacing:0}
+.row{display:grid;grid-template-columns:14px 1fr auto;gap:0 8px;padding:14px 20px 14px 16px;border-bottom:1px solid var(--line2);position:relative}
+.row.need::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--acc)}
+.row.bad::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--red)}
+.row.sel{background:var(--sel);box-shadow:inset 0 0 0 1px var(--accline)}
+.u{width:6px;height:6px;border-radius:50%;background:var(--acc);margin-top:8px}.u.o{background:none}
+.t{font:var(--tw) var(--ts)/1.38 var(--title);color:var(--ink);letter-spacing:-.005em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row.read .t{color:var(--ink2);font-weight:400}
+.m{color:var(--mute);font-size:11.5px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m s{text-decoration:none;color:var(--faint);margin:0 5px}
+.st{display:flex;gap:12px;margin-top:6px;font-size:11.5px;color:var(--faint);flex-wrap:wrap}
+.st .a{color:var(--acc);font-weight:600}.st .r{color:var(--red);font-weight:600}
+.rt{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:7px}.rt time{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.bar{display:flex;gap:1px;width:48px;height:3px;border-radius:2px;overflow:hidden}.bar i{display:block}
+.detail{display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.dhead{padding:44px 40px 0;border-bottom:1px solid var(--line)}
+.dact{position:absolute;right:28px;top:14px;display:flex;gap:8px}
+.btn{border:1px solid var(--line);border-radius:6px;padding:4px 10px;color:var(--ink2);font-size:11.5px}.btn kbd{font:inherit;color:var(--faint);margin-left:6px}
+.dt{font:var(--tw) 24px/1.3 var(--title);letter-spacing:-.01em;max-width:640px}
+.links{display:flex;gap:16px;align-items:center;margin:14px 0 8px;font-size:12px;flex-wrap:wrap}
+.links a{color:var(--ink2);text-decoration:underline;text-decoration-color:var(--faint);text-underline-offset:3px}
+.links a::after{content:" ↗";color:var(--faint);font-size:10px}
+.jump{border:1px solid var(--accline);background:var(--accsoft);color:var(--acc);border-radius:6px;padding:3px 10px;font-weight:600;font-size:11.5px}
+.dm{color:var(--faint);font-size:11.5px;margin-bottom:16px}
+.tabs{display:flex;gap:26px;font-size:12.5px}.tabs b{font-weight:400;color:var(--mute);padding:10px 0;border-bottom:2px solid transparent}.tabs b.on{color:var(--ink);border-color:var(--acc);font-weight:500}
+.dbody{padding:24px 40px;overflow:hidden;display:flex;flex-direction:column;gap:12px}
+.fold{border:1px dashed var(--line);border-radius:8px;padding:10px 14px;color:var(--mute);font-size:12px;display:flex;gap:12px}.fold b{color:var(--ink2);font-weight:500}
+.card{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.ch{display:flex;align-items:center;gap:11px;padding:12px 16px}
+.av{width:28px;height:28px;border-radius:7px;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;font:600 12px var(--title);color:var(--acc)}
+.ch b{font-weight:500;font-size:13px}.ch small{display:block;color:var(--faint);font-size:11px;margin-top:1px}.ch time{margin-left:auto;color:var(--faint);font-size:11px}
+.cb{padding:2px 16px 16px 55px;font:14px/1.7 -apple-system,"PingFang SC",sans-serif;color:var(--ink2)}
+.cb code{font:12.5px ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line2);padding:1px 6px;border-radius:4px;color:var(--ink)}
+.cb ul{margin:8px 0 0 18px}.cb li::marker{color:var(--acc)}
+.cb .qt{border-left:2px solid var(--accline);padding:4px 12px;margin:8px 0;font:12.5px/1.6 ui-monospace,Menlo,monospace;color:var(--mute)}
+.stat{grid-column:1/-1;border-top:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 20px;font-size:11px;color:var(--faint);background:var(--side)}.stat span:last-child{margin-left:auto}
+.stat i{width:6px;height:6px;border-radius:50%;background:var(--acc);display:inline-block;margin-right:7px}
+.tok{max-width:1440px;margin:0 auto 48px;display:grid;grid-template-columns:1fr 1fr;gap:24px;color:#b9b09c;font:12px/1.8 ui-monospace,Menlo,monospace}
+.tok div{border:1px solid #27221a;border-radius:10px;padding:18px 22px;background:#100e0b}.tok h4{font:500 12px -apple-system,"PingFang SC";letter-spacing:.14em;color:#8c8474;margin-bottom:10px;text-transform:uppercase}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;vertical-align:-1px;border:1px solid #fff2}
+</style></head><body>
+<h2 class="cap">Console · 终端（深色）</h2>
+<div class="stage" id="s1"><div class="win console" id="w1"></div></div>
+<h2 class="cap">Paper · 纸质（浅色）</h2>
+<div class="stage" id="s2"><div class="win paper" id="w2"></div></div>
+<div class="tok" id="tok"></div>
+<script>
+const rows=[
+ {t:"fix(VM-3557): empty the endcard iframe document when its scene exits",m:["dmx-monetize","Vungle/Monetize","#7109","VM-3557"],st:[["r","▲ 8 次失败"],["","例行 7"]],time:"11:57",cls:"bad",unread:1,bar:[0,8,7]},
+ {t:"fix(VM-3539): retry uncached http videos over https after the http load fails",m:["Kevin Obolsky","Vungle/Monetize","#7045","VM-3539"],st:[["a","@ 被提及 · 2 处"],["","2 条评论"],["","例行 16"]],time:"11:21",cls:"need sel",unread:1,bar:[2,1,16]},
+ {t:"feat(nemo): add LCEC interactive variant engines",m:["jason-liftoff","Vungle/Monetize","#7145"],st:[["a","◆ 请求你 Review"],["","7 条评论"],["","例行 22"]],time:"00:06",cls:"need",unread:1,bar:[7,0,22]},
+ {t:"feat(nemo): run templates on an in-house state machine interpreter instead of xstate",m:["Kevin Obolsky","Vungle/Monetize","#7110"],st:[["a","◆ 请求你 Review"],["r","▲ 8 次失败"],["","2 条评论"]],time:"04:49",cls:"need bad",unread:1,bar:[2,8,12]},
+ {t:"chore(ci): retire ViewMaster from GitHub Actions now that Nemo is the sole renderer",m:["Kevin Obolsky","Vungle/Monetize","#7125"],st:[["","1 条评论 · 例行 6"]],time:"昨天",cls:"read",unread:0,bar:[1,0,6]}];
+const side=`<div class="dots"><i></i><i></i><i></i></div><div class="brand"><b>M</b>MailBar</div>
+<div class="sec">分诊</div><div class="nav on hot"><i>◆</i>待处理<em>3</em></div><div class="nav"><i>⚡</i>重点<em></em></div>
+<div class="sec">来源</div><div class="nav"><i>‹›</i>GitHub<em>32</em></div><div class="nav"><i>☰</i>Jira<em>3</em></div><div class="nav"><i>✉</i>其他<em>41</em></div>
+<div class="sec">规则</div><div class="nav"><i><span class="rd" style="background:var(--acc)"></span></i>请求你 Review</div><div class="nav"><i><span class="rd" style="background:var(--acc)"></span></i>被 @ 提及</div><div class="nav"><i><span class="rd" style="background:var(--mute)"></span></i>指派给你</div><div class="nav"><i><span class="rd" style="background:var(--red)"></span></i>CI 失败</div><div class="nav"><i><span class="rd" style="background:var(--faint)"></span></i>已合并 / 已关闭</div>
+<div class="sec">邮箱</div><div class="nav"><i>✉</i>未读</div><div class="nav"><i>▤</i>所有邮件</div>
+<div class="sfoot"><span>账号已连接</span><span>↻ &nbsp; ⚙</span></div>`;
+function rowHTML(r){const total=Math.max(1,r.bar.reduce((a,b)=>a+b,0));const cols=["var(--ink)","var(--red)","var(--faint)"];
+ const bar=r.bar.map((v,i)=>v?`<i style="width:${Math.max(3,48*v/total)}px;background:${cols[i]};${i==2?'opacity:.4':''}"></i>`:"").join("");
+ return `<div class="row ${r.cls} ${r.unread?'':'read'}"><div class="u ${r.unread?'':'o'}"></div><div><div class="t">${r.t}</div><div class="m">${r.m.join("<s>·</s>")}</div><div class="st">${r.st.map(([c,x])=>`<span class="${c}">${x}</span>`).join("")}</div></div><div class="rt"><time>${r.time}</time><div class="bar">${bar}</div></div></div>`}
+const list=`<div class="lhead"><h3>收件箱</h3><span>100</span><div class="seg"><b class="on">会话</b><b>PR</b></div></div>
+<div class="search">⌕ 搜索邮件 <span style="margin-left:auto">/</span></div><div class="lsec">GitHub · 已读 <em>52</em></div>${rows.map(rowHTML).join("")}`;
+const detail=`<div class="dhead"><div class="dact"><span class="btn">已读<kbd>m</kbd></span><span class="btn">GitHub<kbd>g</kbd></span><span class="btn">Gmail<kbd>o</kbd></span></div>
+<div class="dt">fix(VM-3539): retry uncached http videos over https after the http load fails</div>
+<div class="links"><a>Vungle/Monetize</a><a>PR #7045</a><a>VM-3539</a><span class="jump">@ 提及你 1/2 ↓</span></div>
+<div class="dm">18 封邮件 · 真人 2 · 例行 16 · github-actions[bot]、sonarqubecloud[bot]、Kevin Obolsky</div>
+<div class="tabs"><b class="on">全部</b><b>真人</b><b>自动化</b></div></div>
+<div class="dbody"><div class="fold"><b>例行机器人消息 ×12</b><span>SonarQube 通过 ×6 · 包体积检查 ×6</span><span style="margin-left:auto">昨天 ⌄</span></div>
+<div class="card"><div class="ch"><div class="av">K</div><div><b>Kevin Obolsky</b><small>@kobolsky-vungle commented on this pull request.</small></div><time>01:41</time></div></div>
+<div class="card"><div class="ch"><div class="av">K</div><div><b>Kevin Obolsky</b><small>真人 · notifications@github.com</small></div><time>01:42</time></div>
+<div class="cb"><div class="qt">@@ -0,0 +1,12 @@<br>+const HTTP_SCHEME = /^http:\\/\\//i;</div>Returns the https version of a cleartext http URL, or <code>undefined</code> for any other URL.<ul><li>Android 9+ apps block cleartext traffic by default, so an http video can fail to load</li><li>The same CDN serves it over https (VM-3539)</li></ul></div></div></div>`;
+const stat=`<div class="stat"><span><i></i>上次同步 12:34</span><span>本地 1710 封</span><span>j/k 移动 &nbsp; m 已读 &nbsp; / 搜索 &nbsp; ⌘K 命令</span></div>`;
+for(const id of["w1","w2"]) document.getElementById(id).innerHTML=`<div class="side">${side}</div><div class="list">${list}</div><div class="detail">${detail}</div>${stat}`;
+function fit(){const k=Math.min(1,(innerWidth-40)/1440);for(const s of document.querySelectorAll(".stage")){s.style.transform=`scale(${k})`;s.style.height=900*k+"px";s.style.marginLeft=Math.max(20,(innerWidth-1440*k)/2)+"px"}}
+addEventListener("resize",fit);fit();
+document.getElementById("tok").innerHTML=`<div><h4>Console tokens</h4>
+<span class="sw" style="background:#14110d"></span>bg #14110d · side #0f0d0a · panel #191510<br><span class="sw" style="background:#27221a"></span>hairline #27221a / #1f1b14<br><span class="sw" style="background:#ece6d9"></span>ink #ece6d9 · ink2 #b9b09c · mute #8c8474 · faint #615a4c<br><span class="sw" style="background:#f2a33a"></span>accent(需要你) #f2a33a · sel #f2a33a @10%<br><span class="sw" style="background:#ff6a55"></span>red(失败) #ff6a55<br>标题 SF Mono 500 13.5 / 1.38 · 元信息 11.5 · 状态 11.5 · 区块标签 10 大写 +0.16em<br>间距 4/8 · 行内边距 14×20 · 行高≈84 · 圆角 6/8/10</div>
+<div><h4>Paper tokens</h4>
+<span class="sw" style="background:#f8f4ec"></span>bg #f8f4ec · side #efe9db · panel #f2ecdf<br><span class="sw" style="background:#ddd5c3"></span>hairline #ddd5c3 / #e6dfce<br><span class="sw" style="background:#1c1a15"></span>ink #1c1a15 · ink2 #4a463b · mute #807a6a · faint #a39c89<br><span class="sw" style="background:#2b5a43"></span>accent(需要你) #2b5a43 · sel #2b5a43 @6%<br><span class="sw" style="background:#a8402b"></span>red(失败) #a8402b<br>标题 Iowan Old Style / 宋体 500 16 / 1.38 · 元信息 SF 11.5 · 详情标题 24<br>间距 4/8 · 行内边距 14×20 · 圆角 6/8/10</div>`;
+</script></body></html>
