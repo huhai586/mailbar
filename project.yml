@@ -1,0 +1,42 @@
+name: Mail
+options:
+  bundleIdPrefix: com.huhai
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans
+packages:
+  Mail:
+    path: .          # 根目录的 Swift Package（MailCore 库 + mailsync 命令行）
+targets:
+  MailBar:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: Mail
+        product: MailCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: MailBar
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSUIElement: true            # 启动时不进 Dock，打开主窗口时再切换（见 AppDelegate）
+        LSMinimumSystemVersion: "15.0"
+        NSHumanReadableCopyright: ""
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.huhai.mailbar
+        PRODUCT_NAME: MailBar
+        SWIFT_VERSION: "5.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_APP_SANDBOX: NO       # 要读 ~/.config 下的客户端文件和 Keychain，本机自用不开沙盒
+        ENABLE_HARDENED_RUNTIME: NO
+        # 用团队的开发证书签名：钥匙串按团队 ID 放行，所以每次重新编译都不会再要求确认。
+        # 证书过期后用 `xcodebuild -allowProvisioningUpdates` 让 Xcode 自动续签。
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: N29KZ7R4WK
+        MARKETING_VERSION: "0.4.4"
+        CURRENT_PROJECT_VERSION: "9"
