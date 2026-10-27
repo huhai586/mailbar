@@ -257,6 +257,25 @@ final class MailService: ObservableObject {
         }
     }
 
+    // MARK: - OAuth 客户端
+
+    /// 导入 GCP 下载的客户端 JSON。返回给用户看的结果说明。
+    func importClientJSON(from url: URL) -> (ok: Bool, message: String) {
+        let hadSetupError = setupError != nil
+        do {
+            try ClientConfig.install(from: url)
+        } catch {
+            return (false, error.localizedDescription)
+        }
+        if hadSetupError {
+            setupCore()
+            revision += 1
+            syncNow()
+            return (true, "已导入。正在连接，如果还没有登录，下面点「授权」。")
+        }
+        return (true, "已导入。已有的授权属于旧客户端，重新启动 MailBar 并重新授权后生效。")
+    }
+
     // MARK: - 识别规则（真人 / 机器人 / 推送）
 
     @Published private(set) var kindConfig = KindConfig.defaults

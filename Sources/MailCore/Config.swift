@@ -30,22 +30,54 @@ public struct ClientConfig: Sendable {
 
     static let defaultPath = "~/.config/mail-client/client_secret.json"
 
+    /// 客户端文件的位置（MAIL_CLIENT_JSON 优先）。
+    public static var filePath: String {
+        let raw = ProcessInfo.processInfo.environment["MAIL_CLIENT_JSON"] ?? defaultPath
+        return (raw as NSString).expandingTildeInPath
+    }
+
     /// 读取 GCP 控制台下载的"桌面应用" OAuth 客户端 JSON。
     public static func load() throws -> ClientConfig {
-        let raw = ProcessInfo.processInfo.environment["MAIL_CLIENT_JSON"] ?? defaultPath
-        let path = (raw as NSString).expandingTildeInPath
+        let path = filePath
         guard let data = FileManager.default.contents(atPath: path) else {
-            throw MailError.config("找不到 OAuth 客户端文件: \(path)\n把 GCP 下载的 JSON 放到该位置，或用 MAIL_CLIENT_JSON 指定路径。")
+            throw MailError.config("找不到 OAuth 客户端文件: \(path)\n在 设置 → 账号与同步 里导入 GCP 下载的 JSON，或把它放到该位置。")
         }
-        struct Root: Decodable {
-            struct Inner: Decodable { let client_id: String; let client_secret: String }
-            let installed: Inner
+        return try parse(data)
+    }
+
+    /// 解析并校验客户端 JSON。给出能看懂的错误：常见的是下成了"Web 应用"类型的客户端。
+    public static func parse(_ data: Data) throws -> ClientConfig {
+        struct Inner: Decodable { let client_id: String; let client_secret: String }
+        struct Root: Decodable { let installed: Inner?; let web: Inner? }
+        let root: Root
+        do { root = try JSONDecoder().decode(Root.self, from: data) } catch {
+            throw MailError.config("这不是 GCP 下载的 OAuth 客户端 JSON。")
         }
-        do {
-            let root = try JSONDecoder().decode(Root.self, from: data)
-            return ClientConfig(clientID: root.installed.client_id, clientSecret: root.installed.client_secret)
-        } catch {
-            throw MailError.config("客户端 JSON 格式不对（需要 \"installed\" 字段，即'桌面应用'类型的客户端）: \(error)")
+        guard let inner = root.installed else {
+            throw MailError.config(root.web != nil
+                ? "这是「Web 应用」类型的客户端，需要「桌面应用」类型。回到 GCP 控制台重新创建一个桌面应用客户端并下载 JSON。"
+                : "JSON 里没有 \"installed\" 字段，需要「桌面应用」类型客户端的 JSON。")
         }
+        guard !inner.client_id.isEmpty, !inner.client_secret.isEmpty else { throw MailError.config("JSON 里的 client_id 或 client_secret 是空的。") }
+        return ClientConfig(clientID: inner.client_id, clientSecret: inner.client_secret)
+    }
+
+    /// 校验后把一个客户端 JSON 装到应用读取的位置（权限 600）。返回安装后的客户端 ID。
+    @discardableResult
+    public static func install(from source: URL, to destination: String = filePath) throws -> String {
+        let data: Data
+        do { data = try Data(contentsOf: source) } catch { throw MailError.config("读不了这个文件：\(error.localizedDescription)") }
+        let config = try parse(data)
+        let url = URL(fileURLWithPath: destination)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
+                                                attributes: [.posixPermissions: 0o700])
+        try data.write(to: url, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination)
+        return config.clientID
+    }
+
+    /// 当前已配置的客户端 ID（没配置或格式不对返回 nil）。只给界面显示用，不含密钥。
+    public static func installedClientID() -> String? {
+        (try? load())?.clientID
     }
 }

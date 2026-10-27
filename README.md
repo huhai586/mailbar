@@ -29,6 +29,7 @@ tools/make-icon.swift 生成 App 图标和菜单栏图标：swift tools/make-ico
 ```
 
 ## 一、准备 OAuth 客户端（只需一次）
+> 下载好 JSON 后，直接在 App 里 设置 → 账号与同步 → OAuth 客户端 → 导入 JSON（或把文件拖进去）；下面第 3 步手动放文件也可以。换电脑同理。
 1. 公司 GCP 组织下建项目，启用 **Gmail API**。
 2. OAuth 同意屏幕用户类型选 **内部**。
 3. 建 **桌面应用** 类型的客户端，下载 JSON 放到 `~/.config/mail-client/client_secret.json`（或用 `MAIL_CLIENT_JSON` 指定）。不要提交到公开仓库。

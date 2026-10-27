@@ -249,6 +249,23 @@ private struct AccountSettingsView: View {
     @AppStorage(Pref.loadOlderBatch) private var olderBatch = 500
     @State private var confirmResync = false
     @State private var confirmSignOut = false
+    @State private var clientResult: (ok: Bool, message: String)?
+    @State private var dropTargeted = false
+
+    private var clientID: String? { ClientConfig.installedClientID() }
+
+    private func importClient(_ url: URL) {
+        clientResult = service.importClientJSON(from: url)
+    }
+
+    private func chooseClientFile() {
+        let panel = NSOpenPanel()
+        panel.title = "选择 GCP 下载的 OAuth 客户端 JSON"
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK, let url = panel.url { importClient(url) }
+    }
 
     private var localCount: Int { (try? service.store?.messageCount()) ?? 0 }
 
@@ -270,6 +287,34 @@ private struct AccountSettingsView: View {
                     Button("退出登录…", role: .destructive) { confirmSignOut = true }
                 }
                 Text("授权只会用来读取邮件和修改「已读 / 未读」状态，不会发送或删除邮件。").font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("OAuth 客户端") {
+                LabeledContent("状态") {
+                    if let clientID {
+                        Label("已配置 · \(clientID.prefix(12))…", systemImage: "checkmark.circle").foregroundStyle(.green)
+                    } else {
+                        Label("未配置", systemImage: "xmark.circle").foregroundStyle(.red)
+                    }
+                }
+                HStack {
+                    Button("导入 JSON…") { chooseClientFile() }
+                    Text("或把文件拖到这里").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).strokeBorder(dropTargeted ? Color.accentColor : Color.secondary.opacity(0.35),
+                                                                           style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                .dropDestination(for: URL.self) { urls, _ in
+                    guard let url = urls.first else { return false }
+                    importClient(url)
+                    return true
+                } isTargeted: { dropTargeted = $0 }
+                if let clientResult {
+                    Text(clientResult.message).font(.caption).foregroundStyle(clientResult.ok ? Color.secondary : Color.red)
+                }
+                Text("在 GCP 控制台 → API 和服务 → 凭据 → 创建凭据 → OAuth 客户端 ID → 应用类型选「桌面应用」，下载 JSON 导入这里。导入后文件会存到 \(ClientConfig.filePath)（仅自己可读）。换电脑时在新电脑上导入同一个文件即可。")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("本地邮件") {

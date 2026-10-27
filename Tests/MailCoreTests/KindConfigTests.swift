@@ -87,3 +87,31 @@ import Testing
         #expect(GitHubReason.effective(reason: "review_requested", kind: .bot) == "review_requested")
     }
 }
+
+@Suite struct ClientImportTests {
+    private func write(_ json: String) throws -> URL {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory() + "client-\(UUID().uuidString).json")
+        try Data(json.utf8).write(to: url)
+        return url
+    }
+
+    @Test func installsValidDesktopClientWithPrivatePermissions() throws {
+        let source = try write(#"{"installed":{"client_id":"abc.apps.googleusercontent.com","client_secret":"s3"}}"#)
+        let dest = NSTemporaryDirectory() + "cfg-\(UUID().uuidString)/client_secret.json"
+        defer { try? FileManager.default.removeItem(at: source); try? FileManager.default.removeItem(atPath: (dest as NSString).deletingLastPathComponent) }
+        #expect(try ClientConfig.install(from: source, to: dest) == "abc.apps.googleusercontent.com")
+        let attrs = try FileManager.default.attributesOfItem(atPath: dest)
+        #expect((attrs[.posixPermissions] as? NSNumber)?.intValue == 0o600)
+        #expect(FileManager.default.contents(atPath: dest) != nil)
+    }
+
+    @Test func rejectsWebClientAndGarbageWithHelpfulMessages() throws {
+        let web = try write(#"{"web":{"client_id":"a","client_secret":"b"}}"#)
+        let junk = try write("not json")
+        let empty = try write(#"{"installed":{"client_id":"","client_secret":"x"}}"#)
+        let dest = NSTemporaryDirectory() + "never-\(UUID().uuidString).json"
+        for url in [web, junk, empty] { #expect(throws: MailError.self) { try ClientConfig.install(from: url, to: dest) } }
+        #expect(!FileManager.default.fileExists(atPath: dest))
+        do { _ = try ClientConfig.install(from: web, to: dest) } catch { #expect(error.localizedDescription.contains("桌面应用")) }
+    }
+}
