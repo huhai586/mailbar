@@ -8,6 +8,8 @@ struct RootView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @AppStorage(Pref.appearance) private var appearance = "dark"
+    @AppStorage(Pref.fontOffset) private var fontOffset = 0.0
+    @AppStorage(Pref.uiDensity) private var uiDensity = "standard"
 
     init(service: MailService) {
         self.service = service
@@ -26,6 +28,7 @@ struct RootView: View {
             }
             StatusBar(service: service, reader: reader)
         }
+        .id("\(fontOffset)|\(uiDensity)")   // 字号 / 密度一变就整体重建，所有 Theme.ui / pad 重新取值
         .background(Theme.bg)
         .overlay {
             if reader.showPalette {

@@ -16,7 +16,9 @@ enum MarkReadMode: String, CaseIterable, Identifiable {
 enum Pref {
     // 外观
     static let appearance = "appearance"          // dark / light / system
-    static let listDensity = "listDensity"        // compact / comfortable
+    static let listDensity = "listDensity"        // 旧的列表密度（已被 uiDensity 取代，保留键避免旧设置报错）
+    static let uiDensity = "uiDensity"            // 整体密度：compact（紧凑）/ standard（标准）/ spacious（宽松）
+    static let fontOffset = "fontOffset"          // 整体字号偏移（pt，相对默认大小，-3 … +6）
     static let monoBody = "monoBody"
     static let showSnippets = "showSnippets"
     static let landing = "landingMailbox"        // 启动时先看哪里：attention（待处理）/ inbox（收件箱）
@@ -57,6 +59,8 @@ enum Pref {
     static let defaults: [String: Any] = [
         appearance: "dark",
         listDensity: "compact",
+        uiDensity: "standard",
+        fontOffset: 0.0,
         monoBody: true,
         showSnippets: true,
         groupByPR: true,

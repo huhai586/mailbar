@@ -78,19 +78,35 @@ enum Theme {
         return rule.strong ? 3 : 2
     }
 
-    // 字体
+    // 字号偏移和整体密度：设置里改，RootView 用它们当 id，改了就整体重建界面。
+    static var fontOffset: CGFloat { CGFloat(UserDefaults.standard.double(forKey: Pref.fontOffset)) }
+    /// 间距倍率：紧凑 0.8、标准 1、宽松 1.3。
+    static var space: CGFloat {
+        switch UserDefaults.standard.string(forKey: Pref.uiDensity) {
+        case "compact": return 0.8
+        case "spacious": return 1.3
+        default: return 1
+        }
+    }
+    static var isCompact: Bool { UserDefaults.standard.string(forKey: Pref.uiDensity) == "compact" }
+    static var isSpacious: Bool { UserDefaults.standard.string(forKey: Pref.uiDensity) == "spacious" }
+    /// 邮件正文（HTML / Markdown）的字号。
+    static var bodyPx: Int { max(10, 14 + Int(fontOffset.rounded())) }
+    static func pad(_ v: CGFloat) -> CGFloat { (v * space * 2).rounded() / 2 }
+
+    // 字体（都带上字号偏移）
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        .system(size: max(9, size + fontOffset), weight: weight, design: .monospaced)
     }
 
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+        .system(size: max(9, size + fontOffset), weight: weight)
     }
 
     /// 标题字体：终端主题（深色）用等宽，纸质主题（浅色）用衬线。
     static func title(_ size: CGFloat, _ weight: Font.Weight = .regular, scheme: ColorScheme) -> Font {
-        scheme == .dark ? .system(size: size - 1, weight: weight, design: .monospaced)
-                        : .system(size: size + 2, weight: weight, design: .serif)
+        scheme == .dark ? .system(size: max(9, size - 1 + fontOffset), weight: weight, design: .monospaced)
+                        : .system(size: max(9, size + 2 + fontOffset), weight: weight, design: .serif)
     }
 
     static let radius: CGFloat = 6

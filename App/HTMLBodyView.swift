@@ -55,7 +55,7 @@ struct HTMLBodyView: NSViewRepresentable {
         <base target="_blank">
         <style>
           \(style == .markdown ? markdownCSS(dark: dark) : darkCSS)
-          body { font: 14px/1.55 -apple-system, "PingFang SC", sans-serif; margin: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
+          body { font: \(Theme.bodyPx)px/1.55 -apple-system, "PingFang SC", sans-serif; margin: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
           img { max-width: 100%; height: auto; }
           pre, code { white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
           table { max-width: 100%; }
@@ -71,7 +71,7 @@ struct HTMLBodyView: NSViewRepresentable {
         return """
           :root { color-scheme: \(c.scheme); }
           html { background: transparent; color: \(c.text); }
-          body { font: 14px/1.6 -apple-system, "PingFang SC", sans-serif; margin: 0; padding: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
+          body { font: \(Theme.bodyPx)px/1.6 -apple-system, "PingFang SC", sans-serif; margin: 0; padding: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
           a { color: \(c.link); text-decoration: none; }
           a:hover { text-decoration: underline; }
           h1, h2, h3, h4, h5 { margin: 18px 0 8px; font-weight: 600; line-height: 1.25; }

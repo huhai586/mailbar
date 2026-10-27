@@ -114,7 +114,7 @@ private struct ThreadConversation: View {
             if showsFilterBar { filterBar }
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 10) {
+                    VStack(spacing: Theme.pad(10)) {
                         if shownMessages.isEmpty {
                             Text("这一类里没有邮件").font(Theme.ui(12.5)).foregroundStyle(Theme.faint).padding(.top, 40)
                         }
@@ -143,7 +143,7 @@ private struct ThreadConversation: View {
                     }
                     .frame(maxWidth: 900)
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, Theme.pad(16))
                     .frame(maxWidth: .infinity)
                 }
                 .onChange(of: scrollRequest?.nonce) {
@@ -209,7 +209,7 @@ private struct ThreadConversation: View {
             }
             .foregroundStyle(active ? Theme.text : Theme.muted)
             .padding(.horizontal, 9)
-            .padding(.vertical, 5)
+            .padding(.vertical, Theme.pad(5))
             .overlay(alignment: .bottom) { if active { Rectangle().fill(Theme.accent).frame(height: 2).padding(.horizontal, 4) } }
             .contentShape(Rectangle())
         }
@@ -325,8 +325,8 @@ private struct ThreadConversation: View {
             Text(metaLine).font(Theme.mono(11)).foregroundStyle(Theme.faint).lineLimit(1)
         }
         .padding(.horizontal, 22)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.top, Theme.pad(16))
+        .padding(.bottom, Theme.pad(12))
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.panel)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
@@ -596,7 +596,7 @@ private struct MessageCard: View {
             Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.faint)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, expanded ? 9 : 7)
+        .padding(.vertical, Theme.pad(expanded ? 9 : 7))
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.easeInOut(duration: 0.12)) { expanded.toggle() } }
     }

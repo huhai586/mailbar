@@ -20,7 +20,7 @@ struct SidebarView: View {
         VStack(spacing: 0) {
             brand
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.pad(14)) {
                     section("分诊") {
                         row(icon: "exclamationmark.bubble.fill", iconColor: Theme.accent, title: "待处理", mailbox: .attention,
                             badge: reader.stats.attention, badgeColor: Theme.accent)
@@ -130,7 +130,7 @@ struct SidebarView: View {
                 else { Text("\(count.groups)").font(Theme.mono(10.5)).foregroundStyle(Theme.faint) }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 4.5)
+            .padding(.vertical, Theme.pad(4.5))
             .navSelected(selected)
             .contentShape(Rectangle())
         }
@@ -147,7 +147,7 @@ struct SidebarView: View {
                 CountBadge(count: badge, color: badgeColor)
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 4.5)
+            .padding(.vertical, Theme.pad(4.5))
             .navSelected(selected)
             .contentShape(Rectangle())
         }
@@ -170,7 +170,7 @@ struct SidebarView: View {
                 CountBadge(count: ruleCount(rule.name), color: Theme.muted)
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 4.5)
+            .padding(.vertical, Theme.pad(4.5))
             .navSelected(selected)
             .contentShape(Rectangle())
         }

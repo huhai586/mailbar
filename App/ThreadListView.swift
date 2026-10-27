@@ -5,7 +5,7 @@ struct ThreadListView: View {
     @ObservedObject var reader: ReaderModel
     @ObservedObject var service: MailService
     @AppStorage(Pref.loadOlderBatch) private var olderBatch = 50
-    @AppStorage(Pref.listDensity) private var density = "compact"
+    @AppStorage(Pref.uiDensity) private var density = "standard"
     @AppStorage(Pref.showSnippets) private var showSnippets = true
     @FocusState private var searchFocused: Bool
     @FocusState private var listFocused: Bool
@@ -152,7 +152,7 @@ struct ThreadListView: View {
                                 ForEach(section.threads) { thread in
                                     ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
                                               viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
-                                              compact: density == "compact", showSnippet: showSnippets)
+                                              compact: density != "spacious", showSnippet: showSnippets)
                                         .id(thread.id)
                                         .onTapGesture {
                                             reader.selectedThreadID = thread.id
@@ -358,7 +358,7 @@ private struct ThreadRow: View {
         let title = info?.title ?? thread.subject
         HStack(alignment: .top, spacing: 0) {
             Rectangle().fill(barColor).frame(width: 3)
-            VStack(alignment: .leading, spacing: compact ? 3 : 5) {
+            VStack(alignment: .leading, spacing: Theme.pad(compact ? 3 : 5)) {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     // 未读圆点：有真人 / 出问题的未读是强调色；只有例行机器人未读是灰点
                     Circle()
@@ -383,7 +383,7 @@ private struct ThreadRow: View {
             }
             .padding(.leading, 8)
             .padding(.trailing, 12)
-            .padding(.vertical, compact ? 7 : 10)
+            .padding(.vertical, Theme.pad(compact ? 9 : 11))
         }
         .background(selected ? Theme.accent.opacity(0.07) : (hovering ? Theme.hover : .clear))
         .overlay { if selected { Rectangle().strokeBorder(Theme.accent.opacity(0.35), lineWidth: 1) } }

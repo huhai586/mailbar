@@ -31,7 +31,8 @@ struct SettingsView: View {
 private struct GeneralSettingsView: View {
     @ObservedObject var service: MailService
     @AppStorage(Pref.appearance) private var appearance = "dark"
-    @AppStorage(Pref.listDensity) private var density = "compact"
+    @AppStorage(Pref.uiDensity) private var density = "standard"
+    @AppStorage(Pref.fontOffset) private var fontOffset = 0.0
     @AppStorage(Pref.monoBody) private var monoBody = true
     @AppStorage(Pref.showSnippets) private var showSnippets = true
     @AppStorage(Pref.renderMarkdown) private var renderMarkdown = true
@@ -61,10 +62,20 @@ private struct GeneralSettingsView: View {
                     Text("纸质（浅色）").tag("light")
                     Text("跟随系统").tag("system")
                 }
-                Picker("列表密度", selection: $density) {
-                    Text("紧凑（一屏看更多）").tag("compact")
-                    Text("舒适").tag("comfortable")
+                Picker("界面密度", selection: $density) {
+                    Text("紧凑").tag("compact")
+                    Text("标准").tag("standard")
+                    Text("宽松").tag("spacious")
                 }
+                Text("整个界面（侧栏、列表、详情）的留白一起变。紧凑一屏看更多，宽松更透气。").font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Stepper(value: $fontOffset, in: -3...6, step: 1) {
+                        Text("字号偏移　\(fontOffset > 0 ? "+" : "")\(Int(fontOffset)) pt")
+                    }
+                    Button("重置") { fontOffset = 0 }.disabled(fontOffset == 0)
+                }
+                Text("相对默认字号整体放大或缩小，包括邮件正文。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Toggle("正文使用等宽字体", isOn: $monoBody)
                 Toggle("没有标签的邮件在列表里显示摘要", isOn: $showSnippets)
             }
