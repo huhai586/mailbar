@@ -135,6 +135,8 @@ final class MailService: ObservableObject {
         do {
             monitor.newMailAlerts = Pref.newMailAlertMode
             monitor.aiJudge = Self.configuredJudge()
+            // 先把上次没发出去的已读 / 未读补发给 Gmail（失败了下轮再试，本地状态不受影响）
+            if canModify { try? await actions?.flushPending() }
             let result = try await monitor.syncOnce()
             lastSync = Date()
             lastError = nil

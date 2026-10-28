@@ -168,6 +168,7 @@ public final class MailStore: @unchecked Sendable {
                 """)
         }
         registerAssistantMigrations(&migrator)
+        registerPendingMigrations(&migrator)
         return migrator
     }
 

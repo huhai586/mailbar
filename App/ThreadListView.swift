@@ -9,6 +9,8 @@ struct ThreadListView: View {
     @AppStorage(Pref.showSnippets) private var showSnippets = true
     @FocusState private var searchFocused: Bool
     @FocusState private var listFocused: Bool
+    /// 列表最上面那一行（滚动位置）；新邮件插到上面时用它保持眼前的内容不动
+    @State private var topRowID: String?
 
     private var title: String { SystemMailbox.title(for: reader.mailbox, labels: reader.labels) }
 
@@ -152,10 +154,14 @@ struct ThreadListView: View {
                     let rules = reader.rulesByName
                     let visible = reader.visibleThreads
                     ForEach(reader.threads) { thread in
-                        ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
-                                  viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
-                                  compact: density != "spacious", showSnippet: showSnippets)
-                            .id(Self.rowKey(thread))
+                        // 外层按 thread.id 认行（滚动定位用），里层按状态认：已读 / 未读一变就换新的行视图，
+                        // 不然 LazyVStack 在「行的位置和内容同时变」时会继续显示旧内容
+                        VStack(spacing: 0) {
+                            ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
+                                      viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
+                                      compact: density != "spacious", showSnippet: showSnippets)
+                                .id(Self.rowKey(thread))
+                        }
                             .onTapGesture {
                                 trace("[Tap] id=%@ 未读=%d 当前选中=%@", thread.id, thread.unreadCount, reader.selectedThreadID ?? "-")
                                 reader.selectedThreadID = thread.id
@@ -172,13 +178,19 @@ struct ThreadListView: View {
                     }
                     if !reader.threads.isEmpty, !reader.hasMore, reader.searchText.isEmpty { olderFooter }
                 }
+                .scrollTargetLayout()
+            }
+            // 新邮件到了不打乱正在看的位置：停在最顶上时跟着显示最新的；往下翻着时，眼前这一行保持不动
+            .scrollPosition(id: $topRowID, anchor: .top)
+            .onChange(of: reader.threads.map(\.id)) { old, new in
+                if topRowID == nil || topRowID == old.first { topRowID = new.first }
             }
             .focusable()
             .focusEffectDisabled()
             .focused($listFocused)
             .onKeyPress(phases: .down) { handleKey($0) }
             .onChange(of: reader.selectedThreadID) { _, id in
-                if let id, let thread = reader.threads.first(where: { $0.id == id }) { proxy.scrollTo(Self.rowKey(thread)) }
+                if let id { proxy.scrollTo(id) }
             }
             .overlay { if reader.threads.isEmpty { emptyState } }
         }

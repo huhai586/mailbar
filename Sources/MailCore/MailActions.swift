@@ -1,6 +1,6 @@
 import Foundation
 
-/// 对邮件的修改操作。目前只有标记已读 / 未读：先改本地（界面立刻变化），再同步到 Gmail，失败就回滚。
+/// 对邮件的修改操作。目前只有标记已读 / 未读：先改本地并记为待发送（界面立刻变化），再同步到 Gmail（见 PendingChanges.swift）。
 public final class MailActions: Sendable {
     private let api: any GmailAPI
     private let store: MailStore
@@ -20,30 +20,41 @@ public final class MailActions: Sendable {
     }
 
     /// 把这些邮件标为已读（read = true）或未读。已经是目标状态的会被跳过；全部跳过时不发请求。
-    /// onLocalChange 在本地状态改完、请求 Gmail 之前调用，界面可以据此立刻刷新。
+    /// 先在本地改好并记为待发送（onLocalChange 在这之后、请求 Gmail 之前调用，界面立刻变化），再同步到 Gmail：
+    /// - 成功：清掉待发送记录；
+    /// - Gmail 明确拒绝（授权不够、请求无效）：恢复原状态并抛错；
+    /// - 网络问题等临时失败：保留本地状态和待发送记录，下次同步前由 flushPending() 重发，不抛错。
     public func setRead(_ read: Bool, messageIds: [String], onLocalChange: (@Sendable () -> Void)? = nil) async throws {
-        let before = try messageIds.compactMap { id -> (id: String, labels: Set<String>)? in
-            // 本地没有这封邮件，或者已经是目标状态：跳过
-            guard try store.hasMessage(id) else { return nil }
-            let labels = try store.labelIds(of: id)
-            let isUnread = labels.contains("UNREAD")
-            return isUnread == read ? (id, labels) : nil
-        }
-        guard !before.isEmpty else { return }
-
-        for item in before {
-            var labels = item.labels
-            if read { labels.remove("UNREAD") } else { labels.insert("UNREAD") }
-            try store.setLabels(messageId: item.id, labelIds: Array(labels))
-        }
+        let changed = try store.applyLocalRead(messageIds, read: read)
+        guard !changed.isEmpty else { return }
         onLocalChange?()
+        try await push(changed, read: read)
+    }
+
+    /// 重发还没被 Gmail 确认的改动（上次网络失败、或者请求发出前应用退出了）。
+    public func flushPending() async throws {
+        for group in try store.pendingReads() {
+            try await push(group.ids, read: group.read)
+        }
+    }
+
+    private func push(_ ids: [String], read: Bool) async throws {
         do {
-            try await api.batchModify(ids: before.map(\.id),
-                                      addLabelIds: read ? [] : ["UNREAD"],
-                                      removeLabelIds: read ? ["UNREAD"] : [])
+            try await api.batchModify(ids: ids, addLabelIds: read ? [] : ["UNREAD"], removeLabelIds: read ? ["UNREAD"] : [])
+            try store.clearPendingRead(ids, read: read)
         } catch {
-            for item in before { try? store.setLabels(messageId: item.id, labelIds: Array(item.labels)) }
+            guard Self.isPermanent(error) else { return }    // 临时失败：留着下次重发
+            try? store.revertPendingRead(ids, read: read)
             throw error
+        }
+    }
+
+    /// 重试也没用的失败：授权问题、请求本身无效（4xx，限流 429 除外）。
+    static func isPermanent(_ error: Error) -> Bool {
+        switch error {
+        case MailError.reauthorizationRequired, MailError.loginRequired: return true
+        case MailError.http(let status, _): return (400..<500).contains(status) && status != 429
+        default: return false
         }
     }
 }

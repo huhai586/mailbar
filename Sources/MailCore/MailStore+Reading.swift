@@ -144,6 +144,14 @@ extension MailStore {
     /// source 不为 nil 时只要这个来源的分组（"github" / "jira" / "googleDocs" / "other"）。
     public func threads(in mailbox: Mailbox, search: String? = nil, unreadOnly: Bool = false, source: String? = nil,
                         groupByPR: Bool = false, limit: Int = 100, offset: Int = 0) throws -> [ThreadSummary] {
+        try db.read { db in
+            try Self.fetchThreads(db, in: mailbox, search: search, unreadOnly: unreadOnly, source: source,
+                                  groupByPR: groupByPR, limit: limit, offset: offset)
+        }
+    }
+
+    static func fetchThreads(_ db: Database, in mailbox: Mailbox, search: String?, unreadOnly: Bool, source: String?,
+                             groupByPR: Bool, limit: Int, offset: Int) throws -> [ThreadSummary] {
         let key = groupByPR ? "COALESCE(prKey, threadId)" : "threadId"
         let mKey = groupByPR ? "COALESCE(m.prKey, m.threadId)" : "m.threadId"
         let mmKey = groupByPR ? "COALESCE(mm.prKey, mm.threadId)" : "mm.threadId"
@@ -162,8 +170,7 @@ extension MailStore {
         arguments += [limit, offset]
         let prGroup = groupByPR ? "MAX(prKey) IS NOT NULL" : "0"
 
-        return try db.read { db in
-            try Row.fetchAll(db, sql: """
+        return try Row.fetchAll(db, sql: """
                 SELECT m.*, \(mKey) AS groupKey, t.cnt AS threadCount, t.unread AS unreadCount, t.attach AS attachCount,
                        t.threads AS distinctThreads, t.ci AS ciCount, t.jira AS jiraCount, t.gsource AS groupSource,
                        t.hc AS humanCount, t.hu AS humanUnread, t.ac AS alertCount, t.au AS alertUnread,
@@ -206,11 +213,14 @@ extension MailStore {
                               reasons: ((row["reasonList"] as String?) ?? "").split(separator: ",").map(String.init).sorted(),
                               lastHumanFrom: row["lastHumanFrom"], lastHumanDate: (row["lastHumanDate"] as Int64?).map(Self.date))
             }
-        }
     }
 
     /// 当前邮箱 / 搜索条件下，各来源有多少分组、几个有未读（列表顶部分类标签的数字）。
     public func sourceCounts(in mailbox: Mailbox, search: String? = nil, groupByPR: Bool = false) throws -> [String: SourceCount] {
+        try db.read { try Self.fetchSourceCounts($0, in: mailbox, search: search, groupByPR: groupByPR) }
+    }
+
+    static func fetchSourceCounts(_ db: Database, in mailbox: Mailbox, search: String?, groupByPR: Bool) throws -> [String: SourceCount] {
         var clauses = [Self.mailboxClause(mailbox)]
         if let search, let clause = Self.searchClause(search) { clauses.append(clause) }
         let whereSQL = clauses.map { "(\($0.sql))" }.joined(separator: " AND ")
@@ -219,7 +229,6 @@ extension MailStore {
         let key = groupByPR ? "COALESCE(prKey, threadId)" : "threadId"
         let prGroup = groupByPR ? "MAX(prKey) IS NOT NULL" : "0"
         let having = mailbox == .attention ? "HAVING \(Self.attentionHaving)" : ""
-        return try db.read { db in
             var result: [String: SourceCount] = [:]
             for row in try Row.fetchAll(db, sql: """
                 SELECT gsource, COUNT(*) AS groups, SUM(CASE WHEN unread > 0 THEN 1 ELSE 0 END) AS unreadGroups FROM (
@@ -232,7 +241,6 @@ extension MailStore {
                 result[row["gsource"]] = SourceCount(groups: row["groups"], unreadGroups: row["unreadGroups"])
             }
             return result
-        }
     }
 
     /// 收件箱里某类邮件的未读邮件 id（"一键清理例行机器人邮件"用）。
@@ -270,8 +278,15 @@ extension MailStore {
     }
 
     private func messages(whereSQL: String, argument: String) throws -> [MessageDetail] {
-        try db.read { db in
-            try Row.fetchAll(db, sql: """
+        try db.read { try Self.fetchMessages($0, whereSQL: whereSQL, argument: argument) }
+    }
+
+    static func fetchMessages(_ db: Database, inGroup id: String) throws -> [MessageDetail] {
+        try fetchMessages(db, whereSQL: id.contains("#") ? "m.prKey = ?" : "m.threadId = ?", argument: id)
+    }
+
+    static func fetchMessages(_ db: Database, whereSQL: String, argument: String) throws -> [MessageDetail] {
+        try Row.fetchAll(db, sql: """
                 SELECT m.*, (SELECT group_concat(labelId) FROM message_label WHERE messageId = m.id) AS labels
                 FROM message m WHERE \(whereSQL) ORDER BY m.internalDate ASC, m.seq ASC
                 """, arguments: [argument]).map { row in
@@ -284,7 +299,6 @@ extension MailStore {
                                      reason: (row["reason"] as String?).flatMap { $0.isEmpty ? nil : $0 },
                                      kind: row["kind"])
             }
-        }
     }
 
     /// 某个 Gmail 会话所属的 PR（会话里任意一封邮件有 prKey 即可）。

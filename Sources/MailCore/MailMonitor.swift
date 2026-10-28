@@ -286,6 +286,8 @@ public final class MailMonitor: @unchecked Sendable {
     public func syncOnce(forceFull: Bool = false) async throws -> MonitorResult {
         let rules = refreshRulesReportingChange()
         let summary = try await engine.sync(forceFull: forceFull)
+        // 同步可能用 Gmail 的旧状态盖掉了还没被确认的本地已读 / 未读，盖回来
+        try store.reapplyPendingReads()
         await state.judgeCandidates()
         // 同步失败时已记录的待提醒命中会留到下一次成功时再返回
         return MonitorResult(summary: summary, alerts: state.takeAlerts(), ruleWarning: rules.warning,

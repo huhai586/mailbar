@@ -109,10 +109,13 @@ final class ReaderModel: ObservableObject {
     private var limit = 100
     /// 从通知 / 菜单跳转过来时，等切换完邮箱再选中的会话
     private var pendingThreadID: String?
+    /// 列表和详情都直接订阅数据库（见 MailCore/LiveQueries.swift）：数据一变就推过来，不用手动刷新
+    private var listObservation: StoreObservation?
+    private var messagesObservation: StoreObservation?
+    /// 「延迟 N 秒标已读」的倒计时
     private var markTask: Task<Void, Never>?
-    /// 上一次触发自动标记已读的「会话|最新一封」：同一封不重复标，避免用户手动标回未读后又被改回已读；
-    /// 取消选中（或换成别的会话）后清空，所以再点回来、或者看着时又来了新邮件，都会再标一次。
-    private var lastAutoMarkKey: String?
+    /// 在这个会话里手动标回了未读：直到换一个会话之前不再自动标已读
+    private var autoMarkSuppressed = false
 
     init(service: MailService) {
         self.service = service
@@ -149,8 +152,7 @@ final class ReaderModel: ObservableObject {
         }.store(in: &cancellables)
 
         $selectedThreadID.removeDuplicates().receive(on: DispatchQueue.main).sink { [weak self] _ in
-            guard let self else { return }
-            loadMessages()
+            self?.observeSelection()
         }.store(in: &cancellables)
 
         // 设置页里的开关改的是偏好，这里同步回来
@@ -175,12 +177,16 @@ final class ReaderModel: ObservableObject {
 
     // MARK: - Loading
 
+    /// 侧栏计数、概览这些汇总数据（同步或标已读之后 revision +1 时重算）。列表和详情走数据库订阅，不在这里。
     private func reloadAll() {
         guard let store = service.store else {
             threads = []
             messages = []
             return
         }
+        // 邮件库是后来才打开的（首次启动 / 重新登录）：这时才能开始订阅
+        if listObservation == nil { reloadThreads(resetPaging: false) }
+        if messagesObservation == nil, selectedThreadID != nil { observeSelection() }
         do {
             labels = try store.labels()
             let counts = try store.unreadMatchCounts().map { RuleCount(name: $0.name, count: $0.count) }
@@ -207,8 +213,6 @@ final class ReaderModel: ObservableObject {
             trace("[ReloadAll] 出错：%@", error.localizedDescription)
             errorText = error.localizedDescription
         }
-        reloadThreads(resetPaging: false)
-        loadMessages()
     }
 
     /// 切换邮箱时会同时改 mailbox / sourceFilter / searchText，每个都会触发一次重新加载；合并成下一轮只加载一次
@@ -224,27 +228,26 @@ final class ReaderModel: ObservableObject {
         }
     }
 
+    /// 按当前条件（重新）订阅列表。条件或分页变了才需要调用，数据变化会自动推过来。
     func reloadThreads(resetPaging: Bool) {
         guard let store = service.store else { return }
         if resetPaging { limit = pageSize }
-        do {
-            // 多取一条用来判断还有没有下一页
-            let rows = try store.threads(in: mailbox, search: searchText, unreadOnly: unreadOnly, source: sourceFilter,
-                                         groupByPR: groupByPR, limit: limit + 1)
-            sourceCounts = try store.sourceCounts(in: mailbox, search: searchText, groupByPR: groupByPR)
-            hasMore = rows.count > limit
-            let page = Array(rows.prefix(limit))
-            let changed = page != threads
-            if let id = selectedThreadID {
-                trace("[Reload] 行=%d 有变化=%d 选中=%@ 库里未读=%d 界面未读=%d", page.count, changed, id,
-                      page.first { $0.id == id }?.unreadCount ?? -1, threads.first { $0.id == id }?.unreadCount ?? -1)
-            }
-            if changed { threads = page }
-            errorText = nil
-        } catch {
-            trace("[Reload] 出错：%@", error.localizedDescription)
-            errorText = error.localizedDescription
+        listObservation?.cancel()
+        let query = ThreadQuery(mailbox: mailbox, search: searchText, unreadOnly: unreadOnly, source: sourceFilter,
+                                groupByPR: groupByPR, limit: limit)
+        listObservation = store.observeList(query, onError: { [weak self] error in
+            trace("[List] 出错：%@", error.localizedDescription)
+            self?.errorText = error.localizedDescription
+        }) { [weak self] snapshot in
+            self?.applyList(snapshot)
         }
+    }
+
+    private func applyList(_ snapshot: ListSnapshot) {
+        if snapshot.threads != threads { threads = snapshot.threads }
+        if snapshot.hasMore != hasMore { hasMore = snapshot.hasMore }
+        if snapshot.sourceCounts != sourceCounts { sourceCounts = snapshot.sourceCounts }
+        errorText = nil
         #if DEBUG
         // 调试用：`open MailBar.app --args -selectFirstThread YES` 启动后自动选中第一个会话，方便截图检查详情页
         if selectedThreadID == nil, UserDefaults.standard.bool(forKey: "selectFirstThread"), let first = threads.first {
@@ -261,15 +264,24 @@ final class ReaderModel: ObservableObject {
         reloadThreads(resetPaging: false)
     }
 
-    private func loadMessages() {
+    /// 选中的会话变了：换订阅它的邮件。每次推来新内容（包括看着的时候来了新邮件）都检查一次要不要自动标已读。
+    private func observeSelection() {
+        messagesObservation?.cancel()
+        messagesObservation = nil
+        markTask?.cancel()
+        markTask = nil
+        autoMarkSuppressed = false
         guard let id = selectedThreadID, let store = service.store else {
             if !messages.isEmpty { messages = [] }
-            lastAutoMarkKey = nil
             return
         }
-        let loaded = (try? store.messages(inGroup: id)) ?? []
-        if loaded != messages { messages = loaded }
-        scheduleAutoMarkRead()
+        messagesObservation = store.observeMessages(inGroup: id, onError: { error in
+            trace("[Detail] 出错：%@", error.localizedDescription)
+        }) { [weak self] loaded in
+            guard let self, self.selectedThreadID == id else { return }
+            if loaded != self.messages { self.messages = loaded }
+            self.autoMarkIfNeeded()
+        }
     }
 
     // MARK: - Keyboard / selection
@@ -313,33 +325,33 @@ final class ReaderModel: ObservableObject {
 
     var selectedThreadHasUnread: Bool { messages.contains { $0.isUnread } }
 
-    /// 按设置在查看邮件后把它（或整个会话）标为已读。
-    private func scheduleAutoMarkRead() {
-        guard Pref.markRead != .manual, service.canModify, let threadId = selectedThreadID, let latest = messages.last else {
-            trace("[AutoMark] 跳过：mode=%@ canModify=%d selected=%@ messages=%d", Pref.markRead.rawValue, service.canModify, selectedThreadID ?? "-", messages.count)
-            return
-        }
-        let key = "\(threadId)|\(latest.id)"
-        guard key != lastAutoMarkKey else {
-            trace("[AutoMark] 跳过：同一封已处理过 key=%@ 未读=%d", key, messages.filter(\.isUnread).count)
-            return
-        }
-        lastAutoMarkKey = key
-
-        // 会话以时间线展示，所有邮件都在眼前；"只标记当前这封"时只标最新的一封
-        let ids = Pref.markWholeThread ? messages.filter(\.isUnread).map(\.id) : (latest.isUnread ? [latest.id] : [])
-        trace("[AutoMark] thread=%@ 邮件=%d 要标已读=%d", threadId, messages.count, ids.count)
-        guard !ids.isEmpty else { return }
-        markTask?.cancel()
-        let delay = Pref.markRead == .afterDelay ? Pref.markReadDelaySeconds : 0
+    /// 打开的会话里还有未读，就按设置把它们标为已读。
+    /// 标已读会先改本地（同一个事务），订阅马上推来已读的结果，这里就不会重复标；所以不需要额外的去重标记。
+    private func autoMarkIfNeeded() {
+        guard Pref.markRead != .manual, service.canModify, !autoMarkSuppressed, selectedThreadID != nil, !unreadToMark.isEmpty else { return }
+        guard Pref.markRead == .afterDelay else { return markNow() }
+        guard markTask == nil else { return }       // 已经在倒计时
+        let id = selectedThreadID
+        let delay = UInt64(Pref.markReadDelaySeconds) * 1_000_000_000
         markTask = Task { [weak self] in
-            if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000) }
-            guard !Task.isCancelled, let self, self.selectedThreadID == threadId else {
-                trace("[AutoMark] 取消：thread=%@", threadId)
-                return
-            }
-            await self.service.setRead(true, messageIds: ids)
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled, let self, self.selectedThreadID == id else { return }
+            self.markTask = nil
+            if !self.autoMarkSuppressed { self.markNow() }
         }
+    }
+
+    /// 会话以时间线展示，所有邮件都在眼前；"只标记当前这封"时只标最新的一封。
+    private var unreadToMark: [String] {
+        guard let latest = messages.last else { return [] }
+        return Pref.markWholeThread ? messages.filter(\.isUnread).map(\.id) : (latest.isUnread ? [latest.id] : [])
+    }
+
+    private func markNow() {
+        let ids = unreadToMark
+        guard !ids.isEmpty else { return }
+        trace("[AutoMark] thread=%@ 要标已读=%d", selectedThreadID ?? "-", ids.count)
+        Task { await service.setRead(true, messageIds: ids) }
     }
 
     /// 手动切换：会话里有未读就全部标为已读，否则把最新一封标为未读。
@@ -347,7 +359,12 @@ final class ReaderModel: ObservableObject {
         guard let store = service.store else { return }
         let all = (try? store.messages(inGroup: threadId)) ?? []
         let unread = all.filter(\.isUnread)
-        if threadId == selectedThreadID { markTask?.cancel() }
+        if threadId == selectedThreadID {
+            markTask?.cancel()
+            markTask = nil
+            // 手动标回未读：看着这个会话期间别再自动标已读
+            if unread.isEmpty { autoMarkSuppressed = true }
+        }
         Task {
             if !unread.isEmpty {
                 await service.setRead(true, messageIds: unread.map(\.id))
