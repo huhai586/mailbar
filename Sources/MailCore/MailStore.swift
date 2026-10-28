@@ -175,6 +175,7 @@ public final class MailStore: @unchecked Sendable {
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS message_pr_source_date ON message (prKey, source, internalDate)")
         }
         registerCalendarMigrations(&migrator)
+        registerCalendarOwnershipMigration(&migrator)
         return migrator
     }
 

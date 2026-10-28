@@ -79,6 +79,28 @@ private func gCalendar(_ json: String) -> GCalendar { try! JSONDecoder().decode(
         #expect(store.lastCalendarSync == now)
     }
 
+    @Test func subscribedCalendarsAreNotMineAndTheirResponsesAreNotMyResponses() async throws {
+        let api = FakeCalendarAPI()
+        api.calendarList = [
+            gCalendar(#"{"id":"me@x.com","summary":"Me","primary":true,"accessRole":"owner"}"#),
+            gCalendar(#"{"id":"alice@x.com","summary":"Alice","selected":true,"accessRole":"reader"}"#),
+            gCalendar(#"{"id":"team","summary":"Team","selected":true,"accessRole":"writer"}"#),
+            gCalendar(#"{"id":"mine2","summary":"Side project","selected":true,"accessRole":"owner"}"#),
+        ]
+        let declined = #"{"id":"e","summary":"Sync","start":{"dateTime":"2026-10-28T10:00:00Z"},"end":{"dateTime":"2026-10-28T11:00:00Z"},"attendees":[{"self":true,"responseStatus":"declined"}]}"#
+        for id in ["me@x.com", "alice@x.com", "team", "mine2"] { api.eventsByCalendar[id] = [gEvent(declined)] }
+        let store = try makeStore()
+        try await CalendarSync(api: api, store: store).sync(now: date("2026-10-28T12:00:00Z"), calendar: utc)
+
+        #expect(try store.calendars().map { [$0.id: $0.isOwn] }.reduce(into: [String: Bool]()) { $0.merge($1) { a, _ in a } }
+                == ["me@x.com": true, "alice@x.com": false, "team": false, "mine2": true])
+        let events = try store.calendarEvents(from: date("2026-10-28T00:00:00Z"), to: date("2026-10-29T00:00:00Z"))
+        let byCalendar = Dictionary(uniqueKeysWithValues: events.map { ($0.calendarId, $0) })
+        #expect(byCalendar["me@x.com"]?.isOwnCalendar == true && byCalendar["me@x.com"]?.isDeclined == true)
+        #expect(byCalendar["alice@x.com"]?.isOwnCalendar == false && byCalendar["alice@x.com"]?.isDeclined == false)
+        #expect(byCalendar["alice@x.com"]?.myResponse == "declined")   // 仍记着，界面显示成「Alice 的回复」
+    }
+
     @Test func resyncReplacesEventsAndDropsRemovedCalendars() async throws {
         let api = FakeCalendarAPI()
         api.calendarList = [gCalendar(#"{"id":"a","summary":"A","primary":true}"#), gCalendar(#"{"id":"b","summary":"B","selected":true}"#)]
@@ -187,6 +209,12 @@ private func gCalendar(_ json: String) -> GCalendar { try! JSONDecoder().decode(
         let e = event("a", "2026-10-28T10:00:00Z", "2026-10-28T11:00:00Z")
         #expect(CalendarReminders.due([e], now: now.addingTimeInterval(120), lead: 0).count == 1)
         #expect(CalendarReminders.due([e], now: now.addingTimeInterval(600), lead: 0).isEmpty)
+    }
+
+    @Test func skipsEventsOnSomeoneElsesCalendar() {
+        let theirs = CalendarEvent(id: "t", calendarId: "alice", calendarName: "Alice", colorHex: "#fff", title: "t", start: now, end: now.addingTimeInterval(3600),
+                                   isAllDay: false, isOwnCalendar: false)
+        #expect(CalendarReminders.due([theirs], now: now, lead: 0).isEmpty)
     }
 
     @Test func skipsAllDayAndDeclinedEvents() {

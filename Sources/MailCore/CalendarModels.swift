@@ -19,14 +19,18 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
     public let meetingURL: String?
     /// 在 Google 日历网页里打开的地址
     public let htmlLink: String?
-    /// 我对这个邀请的回复：accepted / declined / tentative / needsAction，自己创建的日程是 nil
+    /// 这个日历是不是你自己的。订阅的、别人共享给你的日历（同事的日历、节假日……）不是：
+    /// 它们只是恰好显示在你的账号里，日程上的回复状态属于日历的主人，不是你。
+    public let isOwnCalendar: Bool
+    /// 日历主人对这个邀请的回复：accepted / declined / tentative / needsAction。自己的日历上就是「我的回复」，没有回复信息是 nil
     public let myResponse: String?
 
-    public var isDeclined: Bool { myResponse == "declined" }
+    /// 你自己拒绝了的日程（别人日历上的拒绝与你无关）
+    public var isDeclined: Bool { isOwnCalendar && myResponse == "declined" }
 
     public init(id: String, calendarId: String, calendarName: String, colorHex: String, title: String, start: Date, end: Date,
                 isAllDay: Bool, location: String = "", notes: String = "", meetingURL: String? = nil, htmlLink: String? = nil,
-                myResponse: String? = nil) {
+                isOwnCalendar: Bool = true, myResponse: String? = nil) {
         self.id = id
         self.calendarId = calendarId
         self.calendarName = calendarName
@@ -39,6 +43,7 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
         self.notes = notes
         self.meetingURL = meetingURL
         self.htmlLink = htmlLink
+        self.isOwnCalendar = isOwnCalendar
         self.myResponse = myResponse
     }
 
@@ -59,6 +64,8 @@ public struct CalendarInfo: Identifiable, Equatable, Sendable {
     public let isPrimary: Bool
     /// 在 Google 日历里是否勾选显示
     public let isSelected: Bool
+    /// 是不是你自己的日历（你是所有者）；订阅的、别人共享的是 false
+    public let isOwn: Bool
 }
 
 // MARK: - Google Calendar API 的返回

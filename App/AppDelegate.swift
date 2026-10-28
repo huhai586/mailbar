@@ -67,6 +67,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         #if DEBUG
+        // 调试用：`--args -demoNotifyClick <分组>` 启动 5 秒后模拟点击这个分组的通知（分组已经开着时，检查会不会展开并定位新邮件）
+        if let group = UserDefaults.standard.string(forKey: "demoNotifyClick") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.showMainWindow(mailbox: .allMail, threadId: group) }
+        }
+        // 调试用：`--args -demoToast YES` 启动后弹一张通知卡片，方便截图检查样式
+        if UserDefaults.standard.bool(forKey: "demoToast") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                self?.service.toasts.show(ToastItem(kind: .calendar, title: "现在开始：View Master Standup", body: "18:00–18:30 · 会议室 B",
+                                                    joinURL: URL(string: "https://meet.google.com/abc")))
+                self?.service.toasts.show(ToastItem(title: "【示例】通知预览", body: "这是一条测试通知，用来看看显示多久。"))
+            }
+        }
+        #endif
+        #if DEBUG
         // 调试用：`--args -openSettings YES -settingsTab rules` 启动后直接打开设置窗口，方便截图检查
         if UserDefaults.standard.bool(forKey: "openSettings") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in

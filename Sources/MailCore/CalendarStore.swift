@@ -33,6 +33,13 @@ extension MailStore {
         }
     }
 
+    static func registerCalendarOwnershipMigration(_ migrator: inout DatabaseMigrator) {
+        migrator.registerMigration("v18-calendar-own") { db in
+            // 已有的日历先当作自己的，下一次同步会按 Google 返回的 accessRole 改正
+            try db.execute(sql: "ALTER TABLE calendar_list ADD COLUMN isOwn INTEGER NOT NULL DEFAULT 1")
+        }
+    }
+
     /// 用最新的日历清单替换本地的，并删掉已经不存在的日历的日程。
     func replaceCalendars(_ calendars: [CalendarInfo]) throws {
         try db.write { db in
@@ -43,10 +50,10 @@ extension MailStore {
             }
             for c in calendars {
                 try db.execute(sql: """
-                    INSERT INTO calendar_list (id, name, color, isPrimary, isSelected) VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO calendar_list (id, name, color, isPrimary, isSelected, isOwn) VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color,
-                        isPrimary = excluded.isPrimary, isSelected = excluded.isSelected
-                    """, arguments: [c.id, c.name, c.colorHex, c.isPrimary, c.isSelected])
+                        isPrimary = excluded.isPrimary, isSelected = excluded.isSelected, isOwn = excluded.isOwn
+                    """, arguments: [c.id, c.name, c.colorHex, c.isPrimary, c.isSelected, c.isOwn])
             }
         }
     }
@@ -70,7 +77,7 @@ extension MailStore {
     public func calendars() throws -> [CalendarInfo] {
         try db.read { db in
             try Row.fetchAll(db, sql: "SELECT * FROM calendar_list ORDER BY isPrimary DESC, name COLLATE NOCASE").map {
-                CalendarInfo(id: $0["id"], name: $0["name"], colorHex: $0["color"], isPrimary: $0["isPrimary"], isSelected: $0["isSelected"])
+                CalendarInfo(id: $0["id"], name: $0["name"], colorHex: $0["color"], isPrimary: $0["isPrimary"], isSelected: $0["isSelected"], isOwn: $0["isOwn"])
             }
         }
     }
@@ -79,7 +86,7 @@ extension MailStore {
     public func calendarEvents(from: Date, to: Date) throws -> [CalendarEvent] {
         try db.read { db in
             try Row.fetchAll(db, sql: """
-                SELECT e.*, c.name AS calName, c.color AS calColor
+                SELECT e.*, c.name AS calName, c.color AS calColor, c.isOwn AS calOwn
                 FROM calendar_event e JOIN calendar_list c ON c.id = e.calendarId
                 WHERE c.isSelected = 1 AND e.startTs < ? AND (e.endTs > ? OR e.startTs >= ?)
                 ORDER BY e.startTs, e.allDay DESC, e.endTs
@@ -87,7 +94,7 @@ extension MailStore {
                 CalendarEvent(id: $0["id"], calendarId: $0["calendarId"], calendarName: $0["calName"], colorHex: $0["calColor"],
                               title: $0["title"], start: Date(timeIntervalSince1970: $0["startTs"]), end: Date(timeIntervalSince1970: $0["endTs"]),
                               isAllDay: $0["allDay"], location: $0["location"], notes: $0["notes"], meetingURL: $0["meetURL"],
-                              htmlLink: $0["htmlLink"], myResponse: $0["myResponse"])
+                              htmlLink: $0["htmlLink"], isOwnCalendar: $0["calOwn"], myResponse: $0["myResponse"])
             }
         }
     }

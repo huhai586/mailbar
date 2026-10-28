@@ -115,6 +115,10 @@ final class ReaderModel: ObservableObject {
     private var listObservation: StoreObservation?
     private var messagesObservation: StoreObservation?
     /// 「延迟 N 秒标已读」的倒计时
+    /// 在这个会话里看着的时候新到的邮件（点通知回来时要展开并定位到它们，哪怕已经被自动标成已读）
+    private var arrivedWhileViewing: Set<String> = []
+    /// 点通知跳到「已经打开着的」会话时 +1：详情页据此展开并滚到新邮件（会话没变，不会触发重新打开）
+    @Published private(set) var focusNewTick = 0
     private var markTask: Task<Void, Never>?
     /// 在这个会话里手动标回了未读：直到换一个会话之前不再自动标已读
     private var autoMarkSuppressed = false
@@ -198,6 +202,9 @@ final class ReaderModel: ObservableObject {
         reloadThreads(resetPaging: true)
         reloadAll()
     }
+
+    /// 看着的时候新到的邮件 id（详情页点通知时用）
+    var newArrivalIDs: Set<String> { arrivedWhileViewing }
 
     /// 正在搜的词（去掉首尾空白）；没在搜返回 nil。列表和详情都用它高亮
     var highlightQuery: String? {
@@ -305,6 +312,7 @@ final class ReaderModel: ObservableObject {
         markTask?.cancel()
         markTask = nil
         autoMarkSuppressed = false
+        arrivedWhileViewing = []
         guard let id = selectedThreadID, let store = service.store else {
             if !messages.isEmpty { messages = [] }
             openedUnreadIDs = []
@@ -319,6 +327,10 @@ final class ReaderModel: ObservableObject {
                 // 先记下打开时的未读，再去自动标已读
                 first = false
                 self.openedUnreadIDs = Set(loaded.filter(\.isUnread).map(\.id))
+            } else {
+                // 看着的时候新到的邮件
+                let known = Set(self.messages.map(\.id))
+                self.arrivedWhileViewing.formUnion(loaded.map(\.id).filter { !known.contains($0) })
             }
             if loaded != self.messages { self.messages = loaded }
             self.autoMarkIfNeeded()
@@ -476,7 +488,15 @@ final class ReaderModel: ObservableObject {
             pendingThreadID = request.threadId.map(resolveGroup(forThread:))
             mailbox = target
         } else if let threadId = request.threadId {
-            selectedThreadID = resolveGroup(forThread: threadId)
+            let resolved = resolveGroup(forThread: threadId)
+            if resolved == selectedThreadID {
+                // 已经开着这个会话：没有「打开」这一步，手动让详情页去展开 / 定位新邮件
+                openedUnreadIDs.formUnion(arrivedWhileViewing)
+                openedUnreadIDs.formUnion(messages.filter(\.isUnread).map(\.id))
+                focusNewTick += 1
+            } else {
+                selectedThreadID = resolved
+            }
         }
         service.consumeNavigation(request)
     }

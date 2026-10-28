@@ -199,6 +199,8 @@ private struct ThreadConversation: View {
                     if !searchMatches.isEmpty { DispatchQueue.main.async { jumpToHit(0) } }
                 }
                 .onAppear { focusInitial(proxy) }
+                // 点通知回到已经开着的会话：展开新邮件并滚过去
+                .onChange(of: reader.focusNewTick) { focusNew(proxy) }
                 // 切换会话时 messages 可能比视图晚一拍更新：这时展开集合里全是上一个会话的邮件 id，一封都对不上，要重新来一遍
                 .onChange(of: messages.map(\.id)) {
                     if expanded.isDisjoint(with: Set(messages.map(\.id))) {
@@ -264,6 +266,22 @@ private struct ThreadConversation: View {
     private func binding(_ id: String) -> Binding<Bool> {
         Binding(get: { expanded.contains(id) },
                 set: { if $0 { expanded.insert(id) } else { expanded.remove(id) } })
+    }
+
+    /// 点通知回到正开着的会话：把看着的时候新到的邮件和现在还没读的展开，没有就展开最新一封非例行的，并滚到最早的那封。
+    private func focusNew(_ proxy: ScrollViewProxy) {
+        let arrived = reader.newArrivalIDs
+        let fresh = messages.filter { arrived.contains($0.id) || $0.isUnread }
+        let nonRoutine = messages.filter { $0.messageKind != .botRoutine }
+        let targets = fresh.isEmpty ? Array((nonRoutine.isEmpty ? messages : nonRoutine).suffix(1)) : Array(fresh.suffix(5))
+        guard let target = targets.first?.id else { return }
+        if targets.contains(where: { !filter.includes($0.messageKind) }) { setFilter(DetailFilter()) }
+        expanded.formUnion(targets.map(\.id))
+        // 目标被「折叠中间 N 封」藏起来时先展开折叠，不然滚不到
+        showAllOlder = true
+        for delay in [0.1, 0.5, 1.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { proxy.scrollTo(target, anchor: .top) }
+        }
     }
 
     private func focusInitial(_ proxy: ScrollViewProxy) {

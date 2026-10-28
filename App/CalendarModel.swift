@@ -73,6 +73,9 @@ final class CalendarModel: ObservableObject {
         events.filter { !hiddenAccounts.contains($0.accountID) && $0.event.occurs(on: day, calendar: calendar) }
     }
 
+    /// 当前显示的日程里有没有订阅的他人日历上的（决定要不要显示图例）
+    var hasOthersCalendars: Bool { events.contains { !$0.event.isOwnCalendar } }
+
     func toggleAccount(_ id: String) {
         if hiddenAccounts.contains(id) { hiddenAccounts.remove(id) } else { hiddenAccounts.insert(id) }
         UserDefaults.standard.set(Array(hiddenAccounts), forKey: "calendarHiddenAccounts")

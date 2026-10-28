@@ -62,11 +62,11 @@ public enum CalendarLayout {
 }
 
 public enum CalendarReminders {
-    /// 现在该提醒的日程：提醒时刻（开始时间减去提前量）落在 [now - window, now] 里。全天日程和已拒绝的日程不提醒。
+    /// 现在该提醒的日程：提醒时刻（开始时间减去提前量）落在 [now - window, now] 里。全天日程、已拒绝的日程、订阅的他人日历上的日程不提醒。
     /// window 让错过一两次检查的提醒还能补上，应用晚启动很久才发现的就不补了。
     public static func due(_ events: [CalendarEvent], now: Date, lead: TimeInterval, window: TimeInterval = 150) -> [CalendarEvent] {
         events.filter { event in
-            guard !event.isAllDay, !event.isDeclined else { return false }
+            guard !event.isAllDay, event.isOwnCalendar, !event.isDeclined else { return false }
             let dueAt = event.start.addingTimeInterval(-lead)
             return dueAt <= now && now.timeIntervalSince(dueAt) <= window
         }

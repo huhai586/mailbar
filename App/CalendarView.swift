@@ -164,6 +164,13 @@ struct CalendarAgenda: View {
     private var accountLegend: some View {
         VStack(alignment: .leading, spacing: 4) {
             Divider().overlay(Theme.border)
+            if model.hasOthersCalendars {
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [2, 1.5])).frame(width: 14, height: 9)
+                    Text("虚线 / 空心点 = 订阅的他人日历").font(Theme.ui(10.5)).foregroundStyle(Theme.faint)
+                }
+                .padding(.bottom, 2)
+            }
             ForEach(service.accounts) { account in
                 let hidden = model.hiddenAccounts.contains(account.id)
                 Button { model.toggleAccount(account.id) } label: {
@@ -191,25 +198,36 @@ private struct AgendaDayRow: View {
         let today = model.isToday(day)
         let events = model.eventsOn(day)
         Button { model.anchor = day } label: {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
                 VStack(spacing: 0) {
                     Text(CalendarFormat.weekdayShort(day)).font(Theme.ui(11.5, .medium))
                     Text(CalendarFormat.dayNumber(day)).font(Theme.ui(24, .regular))
                     Text(CalendarFormat.monthShort(day)).font(Theme.ui(9.5, .semibold))
                 }
                 .foregroundStyle(selected ? Color.white : (today ? Theme.accent : Theme.text))
-                .frame(width: 44)
-                VStack(alignment: .leading, spacing: 3) {
+                .fixedSize()
+                .frame(minWidth: 48)
+                VStack(alignment: .leading, spacing: 6) {
                     if events.isEmpty {
                         Label("无日程", systemImage: "calendar").font(Theme.ui(11)).foregroundStyle(selected ? Color.white.opacity(0.8) : Theme.faint)
                             .padding(.top, 14)
                     } else {
                         ForEach(events.prefix(3)) { item in
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
+                                // 时间不换行：固定按内容宽度排，再给一个最小宽度让各行的圆点对齐
                                 Text(item.event.isAllDay ? "全天" : CalendarFormat.clock(item.event.start))
                                     .font(Theme.mono(10.5)).foregroundStyle(selected ? Color.white.opacity(0.8) : Theme.muted)
-                                    .frame(width: 34, alignment: .leading)
-                                Circle().fill(selected ? Color.white : Theme.accountColor(item.colorIndex)).frame(width: 5, height: 5)
+                                    .lineLimit(1).fixedSize()
+                                    .frame(minWidth: 44, alignment: .leading)
+                                // 实心点 = 你自己的日历；空心圈 = 订阅的他人日历
+                                Group {
+                                    if item.event.isOwnCalendar {
+                                        Circle().fill(selected ? Color.white : Theme.accountColor(item.colorIndex))
+                                    } else {
+                                        Circle().strokeBorder(selected ? Color.white : Theme.accountColor(item.colorIndex), lineWidth: 1)
+                                    }
+                                }
+                                .frame(width: 6, height: 6)
                                 Text(item.event.title).font(Theme.ui(12, .medium)).lineLimit(1)
                                     .foregroundStyle(selected ? Color.white : Theme.text)
                                     .strikethrough(item.event.isDeclined)
@@ -217,18 +235,44 @@ private struct AgendaDayRow: View {
                         }
                         if events.count > 3 {
                             Text("还有 \(events.count - 3) 项…").font(Theme.ui(10.5)).foregroundStyle(selected ? Color.white.opacity(0.8) : Theme.faint)
-                                .padding(.leading, 40)
+                                .padding(.leading, 66)
                         }
                     }
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10).padding(.vertical, 8)
+            .padding(.horizontal, 12).padding(.vertical, 10)
             .background(selected ? Theme.accent : Color.clear, in: RoundedRectangle(cornerRadius: 8))
             .padding(.horizontal, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainPointerButtonStyle())
+    }
+}
+
+// MARK: - 别人的日历的样式
+
+/// 订阅的、别人共享给你的日历上的日程：底色更淡、虚线描边，一眼能和你自己的日程区分开。
+private struct CalendarOwnership: ViewModifier {
+    let item: AccountEvent
+    var radius: CGFloat = 4
+    var ownFill: Double = 0.22
+
+    func body(content: Content) -> some View {
+        let color = Theme.accountColor(item.colorIndex)
+        if item.event.isOwnCalendar {
+            content.background(color.opacity(item.event.isDeclined ? 0.1 : ownFill), in: RoundedRectangle(cornerRadius: radius))
+        } else {
+            content
+                .background(color.opacity(0.07), in: RoundedRectangle(cornerRadius: radius))
+                .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(color.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+        }
+    }
+}
+
+extension View {
+    fileprivate func calendarOwnership(_ item: AccountEvent, radius: CGFloat = 4, ownFill: Double = 0.22) -> some View {
+        modifier(CalendarOwnership(item: item, radius: radius, ownFill: ownFill))
     }
 }
 
@@ -272,9 +316,16 @@ private struct EventDetail: View {
                     Text(dayText(e) + "  " + CalendarFormat.timeRange(e)).font(Theme.ui(12)).foregroundStyle(Theme.muted)
                 }
             }
-            row("calendar", "\(e.calendarName) · \(item.accountEmail)")
+            if e.isOwnCalendar {
+                row("calendar", "\(e.calendarName) · \(item.accountEmail)")
+            } else {
+                row("person.2", "\(e.calendarName) · 订阅的日历，不是你本人的（通过 \(item.accountEmail) 看到）")
+            }
             if !e.location.isEmpty { row("mappin.and.ellipse", e.location) }
-            if let responseText { row("person.crop.circle.badge.checkmark", "我的回复：\(responseText)") }
+            if let responseText {
+                // 别人的日历上的回复属于日历的主人，不能写成「我的回复」
+                row("person.crop.circle.badge.checkmark", e.isOwnCalendar ? "我的回复：\(responseText)" : "\(e.calendarName) 的回复：\(responseText)")
+            }
             if !e.notes.isEmpty {
                 Text(String(e.notes.prefix(500))).font(Theme.ui(11.5)).foregroundStyle(Theme.muted).lineLimit(8).textSelection(.enabled)
             }
@@ -312,7 +363,7 @@ private struct TimeGridView: View {
     @ObservedObject var model: CalendarModel
     let days: [Date]
     private let hourHeight: CGFloat = 56
-    private let gutter: CGFloat = 54
+    private let gutter: CGFloat = 70
 
     var body: some View {
         VStack(spacing: 0) {
@@ -372,7 +423,8 @@ private struct TimeGridView: View {
         let rows = perDay.map(\.count).max() ?? 0
         return HStack(alignment: .top, spacing: 0) {
             Text("全天").font(Theme.ui(10.5)).foregroundStyle(Theme.faint)
-                .frame(width: gutter, alignment: .trailing).padding(.trailing, 8).padding(.top, 5)
+                .lineLimit(1).fixedSize()
+                .frame(width: gutter, alignment: .trailing).padding(.trailing, 10).padding(.top, 5)
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                 VStack(spacing: 2) {
                     ForEach(model.eventsOn(day).filter { $0.event.isAllDay }) { item in
@@ -392,8 +444,9 @@ private struct TimeGridView: View {
 
     private func hourRow(_ hour: Int) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            Text(String(format: "%02d:00", hour)).font(Theme.mono(10)).foregroundStyle(Theme.faint)
-                .frame(width: gutter, alignment: .trailing).padding(.trailing, 8).offset(y: -6)
+            Text(String(format: "%02d:00", hour)).font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
+                .lineLimit(1).fixedSize()
+                .frame(width: gutter, alignment: .trailing).padding(.trailing, 10).offset(y: -7)
             Rectangle().fill(Theme.border.opacity(0.7)).frame(height: 1)
         }
         .frame(height: hourHeight, alignment: .top)
@@ -434,9 +487,10 @@ private struct TimeGridView: View {
                     Rectangle().fill(Theme.accent).frame(width: columnWidth, height: 1.5)
                         .offset(x: gutter + CGFloat(index) * columnWidth, y: y)
                     Text(CalendarFormat.clock(context.date)).font(Theme.mono(10, .semibold)).foregroundStyle(Color.white)
-                        .padding(.horizontal, 5).padding(.vertical, 1.5)
+                        .lineLimit(1).fixedSize()
+                        .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Theme.accent, in: RoundedRectangle(cornerRadius: 4))
-                        .offset(x: gutter - 46, y: y - 8)
+                        .offset(x: gutter - 60, y: y - 8)
                 }
             }
         }
@@ -450,7 +504,7 @@ private struct EventBlock: View {
     var body: some View {
         let color = Theme.accountColor(item.colorIndex)
         HStack(spacing: 0) {
-            Rectangle().fill(color).frame(width: 3)
+            Rectangle().fill(item.event.isOwnCalendar ? color : color.opacity(0.45)).frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.event.title).font(Theme.ui(11.5, .semibold)).lineLimit(height > 40 ? 2 : 1)
                     .strikethrough(item.event.isDeclined)
@@ -459,11 +513,11 @@ private struct EventBlock: View {
                 }
             }
             .foregroundStyle(Theme.text)
-            .padding(.horizontal, 6).padding(.vertical, 3)
+            .padding(.horizontal, 8).padding(.vertical, 4)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(color.opacity(item.event.isDeclined ? 0.1 : 0.22), in: RoundedRectangle(cornerRadius: 5))
+        .calendarOwnership(item, radius: 5)
         .clipShape(RoundedRectangle(cornerRadius: 5))
         .contentShape(Rectangle())
         .eventPopover(item)
@@ -530,7 +584,7 @@ private struct MonthCell: View {
                 .foregroundStyle(dim ? Theme.muted : Theme.text)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4).padding(.vertical, 1)
-                .background(Theme.accountColor(item.colorIndex).opacity(item.event.isAllDay ? 0.3 : 0.14), in: RoundedRectangle(cornerRadius: 3))
+                .calendarOwnership(item, radius: 3, ownFill: item.event.isAllDay ? 0.3 : 0.14)
                 .eventPopover(item)
             }
             if events.count > shown {

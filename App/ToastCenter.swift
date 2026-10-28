@@ -79,7 +79,7 @@ final class ToastCenter: ObservableObject {
             panel.hidesOnDeactivate = false
             panel.backgroundColor = .clear
             panel.isOpaque = false
-            panel.hasShadow = false
+            panel.hasShadow = true    // 阴影由系统按内容的圆角形状画；SwiftUI 自己的 shadow 会被面板边界裁成一个方块
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
             panel.contentView = NSHostingView(rootView: ToastStack(center: self))
             self.panel = panel
@@ -102,16 +102,19 @@ final class ToastCenter: ObservableObject {
 
 private struct ToastStack: View {
     @ObservedObject var center: ToastCenter
+    @AppStorage(Pref.appearance) private var appearance = "dark"
 
     var body: some View {
         VStack(spacing: 8) {
             ForEach(center.items) { item in ToastCard(center: center, item: item) }
         }
-        .padding(8)
+        .padding(6)
         .frame(width: 380)
+        .applyAppearance(appearance)
     }
 }
 
+/// 卡片用应用自己的主题色（不透明底），和主窗口一致；不用系统毛玻璃——面板不是激活窗口时毛玻璃会变灰，文字几乎看不见。
 private struct ToastCard: View {
     @ObservedObject var center: ToastCenter
     let item: ToastItem
@@ -120,38 +123,38 @@ private struct ToastCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: item.kind == .calendar ? "calendar" : "envelope.fill")
-                .font(.system(size: 18)).foregroundStyle(item.kind == .calendar ? Color.red : Color.accentColor)
+                .font(.system(size: 17)).foregroundStyle(item.kind == .calendar ? Theme.red : Theme.accent)
                 .frame(width: 24).padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                if !item.body.isEmpty { Text(item.body).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(3) }
-                HStack(spacing: 8) {
-                    if let url = item.joinURL {
-                        Button("加入会议") { NSWorkspace.shared.open(url); center.dismiss(item.id) }.controlSize(.small)
+                Text(item.title).font(Theme.ui(13, .semibold)).foregroundStyle(Theme.text).lineLimit(2)
+                if !item.body.isEmpty { Text(item.body).font(Theme.ui(12)).foregroundStyle(Theme.muted).lineLimit(3) }
+                if item.joinURL != nil || item.judgedMessageId != nil {
+                    HStack(spacing: 8) {
+                        if let url = item.joinURL {
+                            Button("加入会议") { NSWorkspace.shared.open(url); center.dismiss(item.id) }.controlSize(.small)
+                        }
+                        if item.judgedMessageId != nil {
+                            Button("👍 有用") { center.feedback(item, 1) }.controlSize(.small)
+                            Button("👎 没用") { center.feedback(item, -1) }.controlSize(.small)
+                        }
                     }
-                    if item.judgedMessageId != nil {
-                        Button("👍 有用") { center.feedback(item, 1) }.controlSize(.small)
-                        Button("👎 没用") { center.feedback(item, -1) }.controlSize(.small)
-                    }
+                    .padding(.top, 3)
                 }
-                .padding(.top, item.joinURL != nil || item.judgedMessageId != nil ? 3 : 0)
             }
             Spacer(minLength: 0)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.12), lineWidth: 1))
+        .background(Theme.raised, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
         .overlay(alignment: .topTrailing) {
             if hovering {
-                Button { center.dismiss(item.id) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                Button { center.dismiss(item.id) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint) }
                     .buttonStyle(.plain).padding(6)
             }
         }
-        .shadow(color: .black.opacity(0.25), radius: 10, y: 3)
-        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
         .onTapGesture { center.open(item) }
         .onHover { inside in hovering = inside; center.hover(item.id, inside) }
-        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 }

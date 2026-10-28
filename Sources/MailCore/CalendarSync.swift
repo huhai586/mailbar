@@ -27,7 +27,9 @@ public struct CalendarSync: Sendable {
         let remote = try await api.calendars().filter { $0.deleted != true }
         let infos = remote.map {
             CalendarInfo(id: $0.id, name: $0.summaryOverride ?? $0.summary ?? $0.id, colorHex: $0.backgroundColor ?? "#4285F4",
-                         isPrimary: $0.primary ?? false, isSelected: $0.selected ?? ($0.primary ?? false))
+                         isPrimary: $0.primary ?? false, isSelected: $0.selected ?? ($0.primary ?? false),
+                         // 只有你是所有者的日历才算自己的；订阅的、共享给你的（reader / writer）都是别人的
+                         isOwn: $0.primary == true || $0.accessRole == "owner")
         }
         try store.replaceCalendars(infos)
 
@@ -57,6 +59,6 @@ public struct CalendarSync: Sendable {
         return CalendarEvent(id: "\(info.id)|\(e.id)", calendarId: info.id, calendarName: info.name, colorHex: info.colorHex,
                              title: title.isEmpty ? "（无标题）" : title, start: start.date, end: end, isAllDay: start.allDay,
                              location: e.location ?? "", notes: e.description ?? "", meetingURL: CalendarParsing.meetingURL(e),
-                             htmlLink: e.htmlLink, myResponse: mine)
+                             htmlLink: e.htmlLink, isOwnCalendar: info.isOwn, myResponse: mine)
     }
 }
