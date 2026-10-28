@@ -9,7 +9,7 @@ packages:
   Mail:
     path: .          # 根目录的 Swift Package（MailCore 库 + mailsync 命令行）
 targets:
-  MailBar:
+  Sift:
     type: application
     platform: macOS
     sources: [App]
@@ -19,7 +19,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: MailBar
+        CFBundleDisplayName: Sift
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSUIElement: true            # 启动时不进 Dock，打开主窗口时再切换（见 AppDelegate）
@@ -28,7 +28,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.huhai.mailbar
-        PRODUCT_NAME: MailBar
+        PRODUCT_NAME: Sift
         SWIFT_VERSION: "5.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_APP_SANDBOX: NO       # 要读 ~/.config 下的客户端文件和 Keychain，本机自用不开沙盒
@@ -38,5 +38,5 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: N29KZ7R4WK
-        MARKETING_VERSION: "0.4.17"
-        CURRENT_PROJECT_VERSION: "22"
+        MARKETING_VERSION: "0.5.0"
+        CURRENT_PROJECT_VERSION: "23"

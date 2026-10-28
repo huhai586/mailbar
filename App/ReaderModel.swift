@@ -261,7 +261,7 @@ final class ReaderModel: ObservableObject {
         if snapshot.sourceCounts != sourceCounts { sourceCounts = snapshot.sourceCounts }
         errorText = nil
         #if DEBUG
-        // 调试用：`open MailBar.app --args -selectFirstThread YES` 启动后自动选中第一个会话，方便截图检查详情页
+        // 调试用：`open Sift.app --args -selectFirstThread YES` 启动后自动选中第一个会话，方便截图检查详情页
         if selectedThreadID == nil, UserDefaults.standard.bool(forKey: "selectFirstThread"), let first = threads.first {
             selectedThreadID = first.id
         }
@@ -458,11 +458,11 @@ final class ReaderModel: ObservableObject {
     }
 }
 
-/// 诊断日志：追加写到 ~/Library/Logs/MailBar-trace.log（统一日志会把字符串参数遮成 <private>，排查时看不到内容）。
+/// 诊断日志：追加写到 ~/Library/Logs/Sift-trace.log（统一日志会把字符串参数遮成 <private>，排查时看不到内容）。
 func trace(_ format: String, _ args: CVarArg...) {
     #if DEBUG
     let line = "\(ISO8601DateFormatter().string(from: Date())) [\(ProcessInfo.processInfo.processIdentifier)] " + String(format: format, arguments: args) + "\n"
-    let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/MailBar-trace.log")
+    let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Sift-trace.log")
     if let handle = try? FileHandle(forWritingTo: url) {
         handle.seekToEndOfFile()
         handle.write(Data(line.utf8))

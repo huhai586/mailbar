@@ -416,7 +416,7 @@ private struct KindSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("MailBar 靠这些规则判断一封邮件是真人写的、机器人的例行报告、机器人报出的问题，还是有人推送了提交。识别错了，在这里加一条覆盖规则就能纠正；改动立刻保存，并对本地所有邮件重新分类。")
+                Text("Sift 靠这些规则判断一封邮件是真人写的、机器人的例行报告、机器人报出的问题，还是有人推送了提交。识别错了，在这里加一条覆盖规则就能纠正；改动立刻保存，并对本地所有邮件重新分类。")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

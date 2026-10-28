@@ -7,48 +7,48 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1119BEA8597A2262FDAA5072 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F4292DD78F2DC9593621739F /* JetBrainsMono-Medium.ttf */; };
-		20848FAAE313E9901D38DFD5 /* BrandIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6838F5CC960F93B58099A9D8 /* BrandIcons.swift */; };
-		22A5829C1B7292A81EBE6991 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */; };
-		27FF4C60FB2B49FA4447DA53 /* Mailboxes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213527931496F0FC1A4EAD36 /* Mailboxes.swift */; };
-		2B4CCF53CF73220C369AF5BC /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 20A9C06A4FA9DC10BD95909A /* IBMPlexSans-Medium.ttf */; };
-		2BD43FB57B72F62FB9C4F2BD /* MailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EF065A276364D28F1CA40F /* MailApp.swift */; };
-		2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1180DCE4D53BBECB1E90113C /* Components.swift */; };
-		394079A43C89005E474C9C30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */; };
-		400CD61E8A4C1A8582A6AD2C /* SoundPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3819E4BF01F62E97D57B80B5 /* SoundPicker.swift */; };
-		48B0BFB31D52FF2C105C753F /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DDD78534B9CBD45B5443A79 /* IBMPlexSans-Regular.ttf */; };
-		49009C4D5E7C58F97CC47A0A /* HTMLBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4E1B89E529222E6E550D764 /* HTMLBodyView.swift */; };
-		4C2AC0AF145B5BE263C1776D /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51EA84EE34781F960835D494 /* FlowLayout.swift */; };
-		4C87F227D0FE569E367BEA17 /* ThreadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */; };
-		4F54950B70FEFDBCC661FA44 /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5ED3CC0B78B764DEA973B07C /* JetBrainsMono-SemiBold.ttf */; };
-		56A7D408A97A0F849085E955 /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88EB400AA4BA9B7E4B17835C /* RichText.swift */; };
-		59B23BF71B468C818CBBF745 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA0749059264A2FC2238246 /* SidebarView.swift */; };
-		5D29D91F0A897EB1E3DD6E18 /* ThreadListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */; };
-		7587BE04F8E2A20C84D91488 /* Notifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5C646E35599E76FA6378AC /* Notifier.swift */; };
-		760107273BC70C54262C4BA7 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856DB34509EA4B91185556A8 /* AISettingsView.swift */; };
-		768B4A645BBBFFDC90EAFDC0 /* AssistantViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7DD726315B0D3ECBC5C95C0 /* AssistantViews.swift */; };
-		7B447E3DA704785F87D5E3A0 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B157A46922C63138444D3 /* DashboardView.swift */; };
-		82B986952BDB18E125D5EF3C /* RulesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659948E83F048F8C1E01F23F /* RulesSettingsView.swift */; };
-		85814D486B1456E4DCDEF1FA /* StrongAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */; };
-		87F16DF97F4D9FAA57052177 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */; };
-		9936F6ECC118F924A5B24907 /* CommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */; };
-		9F3E99B8F0E794389950F689 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */; };
-		A6A7C5DD9321268891CD3750 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */; };
-		A7BEEA279D4777329EF2E048 /* TodoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7EBFBEBA65399DBF70C6D9 /* TodoViews.swift */; };
-		A844A6CB6F2833D8AD907865 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */; };
-		B4EB3A4D2FFC6779466E15A3 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D309B25F7B6E4597AAD4F658 /* RootView.swift */; };
-		B906FD99FE6B2B6F6AB0464F /* MailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 780C48AB7356AEC0B4C782DF /* MailCore */; };
-		BD3228AC19AE4FE4DF70CE76 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 30EF0CC5164A92EC15ED6453 /* IBMPlexMono-Regular.ttf */; };
-		BFC4E7249FA162FAB229EAAC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D1ACF6BFF0CB3E06D17081 /* SettingsView.swift */; };
-		C07E8793E41B60DE59A876BB /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0BFB239E1082AC1E36B09BDF /* IBMPlexMono-SemiBold.ttf */; };
-		C7B58777D1B14253FB5EDC0B /* ReaderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */; };
-		CC93E1712C36D3ABA9B5F77B /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D035DBFEE3C21BBCD6CE9970 /* MailService.swift */; };
-		CC9409782268101CEA5A6E5B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */; };
-		CD4F7F80639B8C954553817C /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20475B95CCA861DA6B39AB80 /* AssistantService.swift */; };
-		CDBD7EB591749462BF51DC5E /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4529AFD57AE81A83CE924D50 /* JetBrainsMono-Regular.ttf */; };
-		D290692AF7E325158404167F /* Prefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2383F8184966C06DE1BA8146 /* Prefs.swift */; };
-		E2B10F72C6365AD4ADC5DDB2 /* FontSets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338B267837EA86DA046B5C05 /* FontSets.swift */; };
-		E952C2F9599B4B5156788FE7 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807DD8561D1F00650EDBE0FD /* Theme.swift */; };
+		0456F3E3AE44E212FF3937AC /* BrandIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6838F5CC960F93B58099A9D8 /* BrandIcons.swift */; };
+		0AEE718993E38650384BBA9C /* SoundPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3819E4BF01F62E97D57B80B5 /* SoundPicker.swift */; };
+		1319FEB3D48E3E3866473019 /* TodoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7EBFBEBA65399DBF70C6D9 /* TodoViews.swift */; };
+		17329188DD3D58CD346AA613 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20475B95CCA861DA6B39AB80 /* AssistantService.swift */; };
+		1C35D3D694530D0333D6BEAD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D309B25F7B6E4597AAD4F658 /* RootView.swift */; };
+		2181CC62145BAB46B5C8693D /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */; };
+		23EA3B37A8246C423C8D22E4 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */; };
+		2EA5CC457F9146ABE67217CF /* Prefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2383F8184966C06DE1BA8146 /* Prefs.swift */; };
+		3590B94ED9ECB4B9C88D9029 /* ThreadListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */; };
+		3CE4A9C3F1EA8559F3F41E25 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51EA84EE34781F960835D494 /* FlowLayout.swift */; };
+		40A77FB8D8DEF70A7548A574 /* RulesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659948E83F048F8C1E01F23F /* RulesSettingsView.swift */; };
+		40CBB2FF7D2AE6BD8EBBF407 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DDD78534B9CBD45B5443A79 /* IBMPlexSans-Regular.ttf */; };
+		40F5A21E7E6C31EAF48460EE /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 20A9C06A4FA9DC10BD95909A /* IBMPlexSans-Medium.ttf */; };
+		418A65E7FCDB7D1D3E5B50A2 /* MailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 3CB2E2A502519FE5BB2EA16C /* MailCore */; };
+		424CB873A2D23AE64656AFA1 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0BFB239E1082AC1E36B09BDF /* IBMPlexMono-SemiBold.ttf */; };
+		50C7EEB5E552F0EB0D419E14 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B157A46922C63138444D3 /* DashboardView.swift */; };
+		5595BE1A6784EA652EB35D77 /* ReaderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */; };
+		60EF341F9A7AEE3DBA6ABF1A /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856DB34509EA4B91185556A8 /* AISettingsView.swift */; };
+		6C0C18398392A1E2D6A37CE4 /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5ED3CC0B78B764DEA973B07C /* JetBrainsMono-SemiBold.ttf */; };
+		6EDDAEEF523DA5392CE691BC /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA0749059264A2FC2238246 /* SidebarView.swift */; };
+		7EBD2C13E4847FA1EC9AEDA9 /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D035DBFEE3C21BBCD6CE9970 /* MailService.swift */; };
+		87A46B119799A4EA488401E7 /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88EB400AA4BA9B7E4B17835C /* RichText.swift */; };
+		94EF909F85A4DE0C05C3155E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */; };
+		A000C4FA693CD9EECC763F23 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0D34CA65D74E9F0AA0956BDB /* IBMPlexSans-SemiBold.ttf */; };
+		A19FA104CF76BA5AA7A92DD5 /* StrongAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */; };
+		AAF4D91A81041E4575D9FFB3 /* ThreadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */; };
+		AB3DC43F07585D68E8D60980 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 30EF0CC5164A92EC15ED6453 /* IBMPlexMono-Regular.ttf */; };
+		AE757AD920B7D1601B2CF570 /* AssistantViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7DD726315B0D3ECBC5C95C0 /* AssistantViews.swift */; };
+		B0028216FD87575634B89A98 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1180DCE4D53BBECB1E90113C /* Components.swift */; };
+		B005FFFA1918CF3BAE9F4D54 /* CommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E87E178FE2207EAB2C6E0FE /* CommandPalette.swift */; };
+		B964B02C41053A2220677066 /* Mailboxes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213527931496F0FC1A4EAD36 /* Mailboxes.swift */; };
+		D02750BC27D3481FB28CDB3E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D1ACF6BFF0CB3E06D17081 /* SettingsView.swift */; };
+		D18A14893D78E9F59E3DDE3E /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4529AFD57AE81A83CE924D50 /* JetBrainsMono-Regular.ttf */; };
+		D65F769E4F8168D73DE24E0A /* FontSets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338B267837EA86DA046B5C05 /* FontSets.swift */; };
+		D7F88E093C4920191649CE8E /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */; };
+		DE4A350281409C5CD5B9B2EF /* HTMLBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4E1B89E529222E6E550D764 /* HTMLBodyView.swift */; };
+		DEC715F5F4945628C85B8C6A /* MailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EF065A276364D28F1CA40F /* MailApp.swift */; };
+		E8B5416438DAC3BC27C3C1BC /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */; };
+		E97B6564495C812FF46E44D8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */; };
+		EDC9B1471341AE783F0AE490 /* Notifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5C646E35599E76FA6378AC /* Notifier.swift */; };
+		F75BEBE823630F13422A1E38 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807DD8561D1F00650EDBE0FD /* Theme.swift */; };
+		F95A6FDCA79A29EA82F80F24 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F4292DD78F2DC9593621739F /* JetBrainsMono-Medium.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -85,10 +85,10 @@
 		B7604F96435C211B5E36E1BA /* StrongAlertCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongAlertCenter.swift; sourceTree = "<group>"; };
 		C2EB5D43876C809426AC7EA9 /* mail */ = {isa = PBXFileReference; lastKnownFileType = folder; name = mail; path = .; sourceTree = SOURCE_ROOT; };
 		C7DD726315B0D3ECBC5C95C0 /* AssistantViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantViews.swift; sourceTree = "<group>"; };
-		CEFA1DE80CCB00DED4E5F9D5 /* MailBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MailBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D035DBFEE3C21BBCD6CE9970 /* MailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailService.swift; sourceTree = "<group>"; };
 		D150558B5BBE6D35EF88764D /* ThreadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadDetailView.swift; sourceTree = "<group>"; };
 		D309B25F7B6E4597AAD4F658 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		DF4CFF1686791B694C14E5AD /* Sift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1FEC76C34E50E47ED2FAA99 /* ThreadListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadListView.swift; sourceTree = "<group>"; };
 		E3D8CCBD158D07DEC809E0CF /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Bold.ttf"; sourceTree = "<group>"; };
 		EBAA2A7E3A8331338B2C8F80 /* ReaderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderModel.swift; sourceTree = "<group>"; };
@@ -99,11 +99,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		ADC6BA15D76E00B018FCB9A3 /* Frameworks */ = {
+		AFD9E9E7B57E58312317CCCA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B906FD99FE6B2B6F6AB0464F /* MailCore in Frameworks */,
+				418A65E7FCDB7D1D3E5B50A2 /* MailCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -159,7 +159,7 @@
 		C3EF16B9530E7358B87490EB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CEFA1DE80CCB00DED4E5F9D5 /* MailBar.app */,
+				DF4CFF1686791B694C14E5AD /* Sift.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -203,24 +203,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A77D3A50CDAB4442BF610CA0 /* MailBar */ = {
+		D29F4746A8A13F8E535E7712 /* Sift */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4637E3F2DE50C805E18C5373 /* Build configuration list for PBXNativeTarget "MailBar" */;
+			buildConfigurationList = B47F77F0A8206AA167E5171F /* Build configuration list for PBXNativeTarget "Sift" */;
 			buildPhases = (
-				47E59BFC55C6CC743989223C /* Sources */,
-				4B924E5BADAA5D349C97D7F4 /* Resources */,
-				ADC6BA15D76E00B018FCB9A3 /* Frameworks */,
+				15D3D1FFDB4D1B066FEAC7BE /* Sources */,
+				706E0EFC2F3FC847376FAE1B /* Resources */,
+				AFD9E9E7B57E58312317CCCA /* Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = MailBar;
+			name = Sift;
 			packageProductDependencies = (
-				780C48AB7356AEC0B4C782DF /* MailCore */,
+				3CB2E2A502519FE5BB2EA16C /* MailCore */,
 			);
-			productName = MailBar;
-			productReference = CEFA1DE80CCB00DED4E5F9D5 /* MailBar.app */;
+			productName = Sift;
+			productReference = DF4CFF1686791B694C14E5AD /* Sift.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -232,7 +232,7 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					A77D3A50CDAB4442BF610CA0 = {
+					D29F4746A8A13F8E535E7712 = {
 						DevelopmentTeam = N29KZ7R4WK;
 						ProvisioningStyle = Automatic;
 					};
@@ -255,81 +255,81 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A77D3A50CDAB4442BF610CA0 /* MailBar */,
+				D29F4746A8A13F8E535E7712 /* Sift */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		4B924E5BADAA5D349C97D7F4 /* Resources */ = {
+		706E0EFC2F3FC847376FAE1B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				394079A43C89005E474C9C30 /* Assets.xcassets in Resources */,
-				87F16DF97F4D9FAA57052177 /* IBMPlexMono-Bold.ttf in Resources */,
-				A844A6CB6F2833D8AD907865 /* IBMPlexMono-Medium.ttf in Resources */,
-				BD3228AC19AE4FE4DF70CE76 /* IBMPlexMono-Regular.ttf in Resources */,
-				C07E8793E41B60DE59A876BB /* IBMPlexMono-SemiBold.ttf in Resources */,
-				22A5829C1B7292A81EBE6991 /* IBMPlexSans-Bold.ttf in Resources */,
-				2B4CCF53CF73220C369AF5BC /* IBMPlexSans-Medium.ttf in Resources */,
-				48B0BFB31D52FF2C105C753F /* IBMPlexSans-Regular.ttf in Resources */,
-				A6A7C5DD9321268891CD3750 /* IBMPlexSans-SemiBold.ttf in Resources */,
-				9F3E99B8F0E794389950F689 /* JetBrainsMono-Bold.ttf in Resources */,
-				1119BEA8597A2262FDAA5072 /* JetBrainsMono-Medium.ttf in Resources */,
-				CDBD7EB591749462BF51DC5E /* JetBrainsMono-Regular.ttf in Resources */,
-				4F54950B70FEFDBCC661FA44 /* JetBrainsMono-SemiBold.ttf in Resources */,
+				94EF909F85A4DE0C05C3155E /* Assets.xcassets in Resources */,
+				E8B5416438DAC3BC27C3C1BC /* IBMPlexMono-Bold.ttf in Resources */,
+				2181CC62145BAB46B5C8693D /* IBMPlexMono-Medium.ttf in Resources */,
+				AB3DC43F07585D68E8D60980 /* IBMPlexMono-Regular.ttf in Resources */,
+				424CB873A2D23AE64656AFA1 /* IBMPlexMono-SemiBold.ttf in Resources */,
+				D7F88E093C4920191649CE8E /* IBMPlexSans-Bold.ttf in Resources */,
+				40F5A21E7E6C31EAF48460EE /* IBMPlexSans-Medium.ttf in Resources */,
+				40CBB2FF7D2AE6BD8EBBF407 /* IBMPlexSans-Regular.ttf in Resources */,
+				A000C4FA693CD9EECC763F23 /* IBMPlexSans-SemiBold.ttf in Resources */,
+				23EA3B37A8246C423C8D22E4 /* JetBrainsMono-Bold.ttf in Resources */,
+				F95A6FDCA79A29EA82F80F24 /* JetBrainsMono-Medium.ttf in Resources */,
+				D18A14893D78E9F59E3DDE3E /* JetBrainsMono-Regular.ttf in Resources */,
+				6C0C18398392A1E2D6A37CE4 /* JetBrainsMono-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		47E59BFC55C6CC743989223C /* Sources */ = {
+		15D3D1FFDB4D1B066FEAC7BE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				760107273BC70C54262C4BA7 /* AISettingsView.swift in Sources */,
-				CC9409782268101CEA5A6E5B /* AppDelegate.swift in Sources */,
-				CD4F7F80639B8C954553817C /* AssistantService.swift in Sources */,
-				768B4A645BBBFFDC90EAFDC0 /* AssistantViews.swift in Sources */,
-				20848FAAE313E9901D38DFD5 /* BrandIcons.swift in Sources */,
-				9936F6ECC118F924A5B24907 /* CommandPalette.swift in Sources */,
-				2C2331ABCCE4EDD930E79447 /* Components.swift in Sources */,
-				7B447E3DA704785F87D5E3A0 /* DashboardView.swift in Sources */,
-				4C2AC0AF145B5BE263C1776D /* FlowLayout.swift in Sources */,
-				E2B10F72C6365AD4ADC5DDB2 /* FontSets.swift in Sources */,
-				49009C4D5E7C58F97CC47A0A /* HTMLBodyView.swift in Sources */,
-				2BD43FB57B72F62FB9C4F2BD /* MailApp.swift in Sources */,
-				CC93E1712C36D3ABA9B5F77B /* MailService.swift in Sources */,
-				27FF4C60FB2B49FA4447DA53 /* Mailboxes.swift in Sources */,
-				7587BE04F8E2A20C84D91488 /* Notifier.swift in Sources */,
-				D290692AF7E325158404167F /* Prefs.swift in Sources */,
-				C7B58777D1B14253FB5EDC0B /* ReaderModel.swift in Sources */,
-				56A7D408A97A0F849085E955 /* RichText.swift in Sources */,
-				B4EB3A4D2FFC6779466E15A3 /* RootView.swift in Sources */,
-				82B986952BDB18E125D5EF3C /* RulesSettingsView.swift in Sources */,
-				BFC4E7249FA162FAB229EAAC /* SettingsView.swift in Sources */,
-				59B23BF71B468C818CBBF745 /* SidebarView.swift in Sources */,
-				400CD61E8A4C1A8582A6AD2C /* SoundPicker.swift in Sources */,
-				85814D486B1456E4DCDEF1FA /* StrongAlertCenter.swift in Sources */,
-				E952C2F9599B4B5156788FE7 /* Theme.swift in Sources */,
-				4C87F227D0FE569E367BEA17 /* ThreadDetailView.swift in Sources */,
-				5D29D91F0A897EB1E3DD6E18 /* ThreadListView.swift in Sources */,
-				A7BEEA279D4777329EF2E048 /* TodoViews.swift in Sources */,
+				60EF341F9A7AEE3DBA6ABF1A /* AISettingsView.swift in Sources */,
+				E97B6564495C812FF46E44D8 /* AppDelegate.swift in Sources */,
+				17329188DD3D58CD346AA613 /* AssistantService.swift in Sources */,
+				AE757AD920B7D1601B2CF570 /* AssistantViews.swift in Sources */,
+				0456F3E3AE44E212FF3937AC /* BrandIcons.swift in Sources */,
+				B005FFFA1918CF3BAE9F4D54 /* CommandPalette.swift in Sources */,
+				B0028216FD87575634B89A98 /* Components.swift in Sources */,
+				50C7EEB5E552F0EB0D419E14 /* DashboardView.swift in Sources */,
+				3CE4A9C3F1EA8559F3F41E25 /* FlowLayout.swift in Sources */,
+				D65F769E4F8168D73DE24E0A /* FontSets.swift in Sources */,
+				DE4A350281409C5CD5B9B2EF /* HTMLBodyView.swift in Sources */,
+				DEC715F5F4945628C85B8C6A /* MailApp.swift in Sources */,
+				7EBD2C13E4847FA1EC9AEDA9 /* MailService.swift in Sources */,
+				B964B02C41053A2220677066 /* Mailboxes.swift in Sources */,
+				EDC9B1471341AE783F0AE490 /* Notifier.swift in Sources */,
+				2EA5CC457F9146ABE67217CF /* Prefs.swift in Sources */,
+				5595BE1A6784EA652EB35D77 /* ReaderModel.swift in Sources */,
+				87A46B119799A4EA488401E7 /* RichText.swift in Sources */,
+				1C35D3D694530D0333D6BEAD /* RootView.swift in Sources */,
+				40A77FB8D8DEF70A7548A574 /* RulesSettingsView.swift in Sources */,
+				D02750BC27D3481FB28CDB3E /* SettingsView.swift in Sources */,
+				6EDDAEEF523DA5392CE691BC /* SidebarView.swift in Sources */,
+				0AEE718993E38650384BBA9C /* SoundPicker.swift in Sources */,
+				A19FA104CF76BA5AA7A92DD5 /* StrongAlertCenter.swift in Sources */,
+				F75BEBE823630F13422A1E38 /* Theme.swift in Sources */,
+				AAF4D91A81041E4575D9FFB3 /* ThreadDetailView.swift in Sources */,
+				3590B94ED9ECB4B9C88D9029 /* ThreadListView.swift in Sources */,
+				1319FEB3D48E3E3866473019 /* TodoViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		28B1355B3C3CC80BFD1D7BDF /* Release */ = {
+		1244D3B053C12EB9721D1755 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 22;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -338,37 +338,13 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.17;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
-				PRODUCT_NAME = MailBar;
+				PRODUCT_NAME = Sift;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
-		};
-		2D37D35275B1188164053F55 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 22;
-				DEVELOPMENT_TEAM = N29KZ7R4WK;
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = App/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MARKETING_VERSION = 0.4.17;
-				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
-				PRODUCT_NAME = MailBar;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
 		};
 		33DCB3991B44A1744A405647 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -489,23 +465,47 @@
 			};
 			name = Debug;
 		};
+		B3E7E601A5B9221355F737E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 23;
+				DEVELOPMENT_TEAM = N29KZ7R4WK;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.5.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
+				PRODUCT_NAME = Sift;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4637E3F2DE50C805E18C5373 /* Build configuration list for PBXNativeTarget "MailBar" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				2D37D35275B1188164053F55 /* Debug */,
-				28B1355B3C3CC80BFD1D7BDF /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
 		A1545A80BA4A302BCDCD3A72 /* Build configuration list for PBXProject "Mail" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8C82A062BA8A33D3D46D44C7 /* Debug */,
 				33DCB3991B44A1744A405647 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B47F77F0A8206AA167E5171F /* Build configuration list for PBXNativeTarget "Sift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B3E7E601A5B9221355F737E8 /* Debug */,
+				1244D3B053C12EB9721D1755 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -520,7 +520,7 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		780C48AB7356AEC0B4C782DF /* MailCore */ = {
+		3CB2E2A502519FE5BB2EA16C /* MailCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MailCore;
 		};

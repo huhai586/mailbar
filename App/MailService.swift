@@ -312,7 +312,7 @@ final class MailService: ObservableObject {
             syncNow()
             return (true, "已导入。正在连接，如果还没有登录，下面点「授权」。")
         }
-        return (true, "已导入。已有的授权属于旧客户端，重新启动 MailBar 并重新授权后生效。")
+        return (true, "已导入。已有的授权属于旧客户端，重新启动 Sift 并重新授权后生效。")
     }
 
     // MARK: - 识别规则（真人 / 机器人 / 推送）

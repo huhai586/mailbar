@@ -98,14 +98,14 @@ struct SidebarView: View {
 
     // MARK: - Pieces
 
-    /// 点 MailBar 标志：取消选中的邮件，右边回到「今日概览」。
+    /// 点 Sift 标志：取消选中的邮件，右边回到「今日概览」。
     private var brand: some View {
         Button { reader.selectedThreadID = nil } label: {
             HStack(spacing: 8) {
                 Image(nsImage: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage)
                     .resizable()
                     .frame(width: 22, height: 22)
-                Text("MailBar").font(Theme.mono(13, .bold)).foregroundStyle(Theme.text)
+                Text("Sift").font(Theme.mono(13, .bold)).foregroundStyle(Theme.text)
                 Spacer()
             }
             .contentShape(Rectangle())

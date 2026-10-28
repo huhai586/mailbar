@@ -1,4 +1,4 @@
-# MailBar：给程序员用的 Gmail 阅读 + 提醒工具（Mac 原生，只读）
+# Sift：给程序员用的 Gmail 阅读 + 提醒工具（Mac 原生，只读）
 
 每天几百封 GitHub / Jira / 文档通知，找出真正重要的、不漏掉、一眼看明白。
 
@@ -17,7 +17,7 @@
 - **设置项齐全**：外观、同步间隔、阅读、已读策略、提醒、强提醒、规则（可视化编辑 + 试匹配）、账号与同步。
 
 ## 打开项目
-**用 Xcode 打开 `Mail.xcodeproj`**（双击，或 `xed .`），scheme 选 **MailBar**、目标 **My Mac**，⌘R。
+**用 Xcode 打开 `Mail.xcodeproj`**（双击，或 `xed .`），scheme 选 **Sift**、目标 **My Mac**，⌘R。
 
 ```
 Mail.xcodeproj        由 project.yml 生成（不要手改；增删 App/ 下文件后运行 `xcodegen generate`）
@@ -35,7 +35,7 @@ tools/make-icon.swift 生成 App 图标和菜单栏图标：swift tools/make-ico
 3. 建 **桌面应用** 类型的客户端，下载 JSON 放到 `~/.config/mail-client/client_secret.json`（或用 `MAIL_CLIENT_JSON` 指定）。不要提交到公开仓库。
 
 ## 二、首次使用
-1. 运行后若弹出钥匙串授权框（"MailBar 想要使用…"），输入登录密码并点 **始终允许**。
+1. 运行后若弹出钥匙串授权框（"Sift 想要使用…"），输入登录密码并点 **始终允许**。
 2. 主窗口顶部提示"需要升级授权"时，点 **授权…** 在浏览器里同意一次（允许修改已读 / 未读状态；只用来标记已读，不会发信或删除）。
 3. 侧栏"规则"下点 **添加推荐规则（GitHub / Jira / 文档）**，推荐规则默认只打标签、不弹通知；想要提醒，在 设置 → 规则 里把提醒方式改成「通知」或「强提醒」。
 
@@ -77,10 +77,10 @@ swift run mailsync matches [规则名] | rematch | sounds | recent | search <词
 - **Gmail 配额**：本项目实测约每分钟 100 次 `messages.get` 就限流，应用会自动降速重试。所以首次同步 500 封要 5–8 分钟；增量同步几秒。
 - **本地只镜像最近的邮件**：默认 500 封，可在 设置 → 账号与同步 里"加载更早的邮件"。
 - **PR 聚合**：靠主题里的 `(PR #n)` 和正文里的 PR 链接；CI 失败邮件没有编号，按"仓库 + PR 标题"对上。
-- **钥匙串授权**：工程用团队 `N29KZ7R4WK` 的开发证书签名，钥匙串按团队放行，首次运行点一次「始终允许」之后，重新编译不会再问。证书一年一过期，过期后运行 `xcodebuild -project Mail.xcodeproj -scheme MailBar -allowProvisioningUpdates build` 让 Xcode 自动续签。
+- **钥匙串授权**：工程用团队 `N29KZ7R4WK` 的开发证书签名，钥匙串按团队放行，首次运行点一次「始终允许」之后，重新编译不会再问。证书一年一过期，过期后运行 `xcodebuild -project Mail.xcodeproj -scheme Sift -allowProvisioningUpdates build` 让 Xcode 自动续签。
 - **Google 文档的识别没有在真实邮件上验证**（你的邮箱里暂时没有这类邮件），按官方通知的发件人和措辞实现，有单元测试。
 - 邮件渲染：禁用 JavaScript；远程图片默认加载（可在设置里关闭）；深色主题下 HTML 邮件反色显示。
 - 开机自动启动时会同时打开主窗口（可在 设置 → 通用 里关掉"启动时打开主窗口"）。
 
 ## 调试开关（仅 Debug 构建）
-`open MailBar.app --args -noSync YES`（不同步，只用本地数据，不会触发钥匙串）、`-selectFirstThread YES`、`-selectGroup "owner/repo#123"`、`-openPalette YES`、`-openSettings YES -settingsTab rules`。
+`open Sift.app --args -noSync YES`（不同步，只用本地数据，不会触发钥匙串）、`-selectFirstThread YES`、`-selectGroup "owner/repo#123"`、`-openPalette YES`、`-openSettings YES -settingsTab rules`。
