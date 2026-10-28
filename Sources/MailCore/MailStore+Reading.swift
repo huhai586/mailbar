@@ -286,6 +286,11 @@ extension MailStore {
         try messages(whereSQL: id.contains("#") ? "m.prKey = ?" : "m.threadId = ?", argument: id)
     }
 
+    /// 按邮件 id 取一封邮件（AI 判断记录里点开预览用）。
+    public func message(id: String) throws -> MessageDetail? {
+        try messages(whereSQL: "m.id = ?", argument: id).first
+    }
+
     private func messages(whereSQL: String, argument: String) throws -> [MessageDetail] {
         try db.read { try Self.fetchMessages($0, whereSQL: whereSQL, argument: argument) }
     }

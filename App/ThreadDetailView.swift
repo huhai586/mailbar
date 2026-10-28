@@ -594,7 +594,7 @@ private enum BodyMode {
     }
 }
 
-private struct MessageCard: View {
+struct MessageCard: View {
     let message: MessageDetail
     let info: NotificationInfo?
     var onSetKind: ((MessageKind) -> Void)?

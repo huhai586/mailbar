@@ -210,6 +210,10 @@ private struct AlertSettingsView: View {
     @AppStorage(Pref.alertMaxAgeHours) private var maxAge = 24
     @AppStorage(Pref.summaryThreshold) private var threshold = 5
     @AppStorage(Pref.defaultSound) private var defaultSound = ""
+    @AppStorage(Pref.notificationStyle) private var notificationStyle = "card"
+    @AppStorage(Pref.toastSeconds) private var toastSeconds = 10
+    @AppStorage(Pref.calendarReminders) private var calendarReminders = true
+    @AppStorage(Pref.calendarLeadMinutes) private var calendarLead = 0
     @AppStorage(Pref.strongRepeatSeconds) private var repeatSeconds = 10
     @AppStorage(Pref.strongMaxMinutes) private var maxMinutes = 5
     @AppStorage(Pref.strongBounceDock) private var bounce = true
@@ -239,6 +243,50 @@ private struct AlertSettingsView: View {
                 Text("规则没有单独指定声音时使用。").font(.caption).foregroundStyle(.secondary)
             }
             .disabled(false)
+
+            Section("通知显示") {
+                Picker("通知样式", selection: $notificationStyle) {
+                    Text("应用内卡片（可设置显示时长）").tag("card")
+                    Text("系统通知").tag("system")
+                }
+                if notificationStyle == "card" {
+                    Picker("显示时长", selection: $toastSeconds) {
+                        Text("5 秒").tag(5)
+                        Text("10 秒").tag(10)
+                        Text("15 秒").tag(15)
+                        Text("30 秒").tag(30)
+                        Text("1 分钟").tag(60)
+                        Text("一直显示，点了才消失").tag(0)
+                    }
+                    Text("卡片出现在屏幕右上角，鼠标放上去会暂停倒计时，点一下打开对应的邮件。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Spacer()
+                        Button("试一下通知") {
+                            service.notifier.post(id: "demo-\(UUID().uuidString)", title: "【示例】通知预览", body: "这是一条测试通知，用来看看显示多久。",
+                                                  threadId: nil, useDefaultSound: true)
+                        }
+                    }
+                } else {
+                    Text("系统通知的显示时长由 macOS 决定（通常几秒）。想让它一直留着，可以在「系统设置 → 通知 → Sift」里把通知样式改成「提醒」。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            Section("日历提醒") {
+                Toggle("日程到点时提醒", isOn: $calendarReminders)
+                Picker("提醒时间", selection: $calendarLead) {
+                    Text("开始时").tag(0)
+                    Text("提前 1 分钟").tag(1)
+                    Text("提前 5 分钟").tag(5)
+                    Text("提前 10 分钟").tag(10)
+                    Text("提前 15 分钟").tag(15)
+                    Text("提前 30 分钟").tag(30)
+                }
+                .disabled(!calendarReminders)
+                Text("所有账号的日历都会提醒；全天日程和你已拒绝的日程不提醒。有视频会议链接的，通知上带「加入会议」。受上面的「提醒总开关」控制。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
 
             Section("强提醒") {
                 Text("规则设为「强提醒」后：屏幕上弹出始终置顶的提醒卡片，循环响铃，Dock 图标持续跳动，直到你点「查看」或「忽略」。")
@@ -274,7 +322,7 @@ private struct AccountSettingsView: View {
     @AppStorage(Pref.initialSyncLimit) private var initialLimit = 500
     @AppStorage(Pref.loadOlderBatch) private var olderBatch = 50
     @State private var confirmResync = false
-    @State private var confirmSignOut = false
+    @State private var removing: Account?
     @State private var clientResult: (ok: Bool, message: String)?
     @State private var dropTargeted = false
 
@@ -293,26 +341,55 @@ private struct AccountSettingsView: View {
         if panel.runModal() == .OK, let url = panel.url { importClient(url) }
     }
 
+    private var currentDBPath: String { service.session?.account.dbPath ?? MailStore.defaultPath() }
     private var localCount: Int { (try? service.store?.messageCount()) ?? 0 }
+
+    private func accountRow(_ account: Account) -> some View {
+        let session = service.sessions[account.id]
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Circle().fill(Theme.accountColor(account.colorIndex)).frame(width: 9, height: 9)
+                Text(account.email).font(.body.weight(.medium))
+                if account.id == service.currentAccountID { Text("当前").font(.caption2).padding(.horizontal, 5).padding(.vertical, 1).background(.quaternary, in: Capsule()) }
+                Spacer()
+                Button("重新授权…") { if let session { service.reauthorize(session) } }
+                Button("移除…", role: .destructive) { removing = account }
+            }
+            HStack(spacing: 14) {
+                if session?.loginRequired == true {
+                    Label("邮件：需要重新登录", systemImage: "xmark.circle").foregroundStyle(.red)
+                } else if session?.canModify == true {
+                    Label("邮件：可读取、可修改状态", systemImage: "checkmark.circle").foregroundStyle(.green)
+                } else {
+                    Label("邮件：仅可读取（标记已读需要重新授权）", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                }
+                if session?.canReadCalendar == true {
+                    Label("日历：已授权", systemImage: "checkmark.circle").foregroundStyle(.green)
+                } else {
+                    Label("日历：未授权（点重新授权）", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                }
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 2)
+    }
 
     var body: some View {
         Form {
             Section("账号") {
-                LabeledContent("邮箱", value: service.accountEmail ?? "（尚未同步）")
-                LabeledContent("授权") {
-                    if service.loginRequired {
-                        Label("需要重新登录", systemImage: "xmark.circle").foregroundStyle(.red)
-                    } else if service.canModify {
-                        Label("可读取、可修改邮件状态", systemImage: "checkmark.circle").foregroundStyle(.green)
-                    } else {
-                        Label("仅可读取（标记已读需要升级）", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
-                    }
+                ForEach(service.accounts) { account in
+                    accountRow(account)
                 }
                 HStack {
-                    Button(service.canModify && !service.loginRequired ? "重新授权…" : "授权 / 升级授权…") { service.signIn() }
-                    Button("退出登录…", role: .destructive) { confirmSignOut = true }
+                    Button(service.addingAccount ? "请在浏览器里完成授权…" : "添加 Gmail 账号…") { service.addAccount() }
+                        .disabled(service.addingAccount || clientID == nil)
+                    if clientID == nil { Text("先在下面导入 OAuth 客户端文件").font(.caption).foregroundStyle(.secondary) }
                 }
-                Text("授权只会用来读取邮件和修改「已读 / 未读」状态，不会发送或删除邮件。").font(.caption).foregroundStyle(.secondary)
+                if let message = service.accountMessage {
+                    Text(message).font(.caption).foregroundStyle(.secondary)
+                }
+                Text("每个账号有自己的授权和本地邮件库，邮件分别同步，侧栏顶部可以切换；日历模块会把所有账号的日程合在一起。授权只用来读取邮件、修改「已读 / 未读」状态和读取日历，不会发送或删除邮件。")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("OAuth 客户端") {
@@ -343,7 +420,7 @@ private struct AccountSettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("本地邮件") {
+            Section("本地邮件（当前账号）") {
                 LabeledContent("已同步", value: "\(localCount) 封")
                 Picker("首次 / 重新同步的邮件数", selection: $initialLimit) {
                     ForEach([200, 500, 1000, 2000, 5000], id: \.self) { Text("最近 \($0) 封").tag($0) }
@@ -365,9 +442,9 @@ private struct AccountSettingsView: View {
             Section("文件") {
                 LabeledContent("数据库") {
                     HStack {
-                        Text(MailStore.defaultPath()).font(.caption).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                        Text(currentDBPath).font(.caption).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
                         Button("在 Finder 中显示") {
-                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: MailStore.defaultPath())])
+                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: currentDBPath)])
                         }
                     }
                 }
@@ -385,10 +462,11 @@ private struct AccountSettingsView: View {
         } message: {
             Text("会重新拉取最近 \(initialLimit) 封邮件，受配额限制可能需要几分钟。")
         }
-        .confirmationDialog("退出登录？", isPresented: $confirmSignOut) {
-            Button("退出登录", role: .destructive) { service.signOut() }
+        .confirmationDialog("移除 \(removing?.email ?? "")？", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
+            Button("移除账号，保留本地邮件文件", role: .destructive) { if let removing { service.removeAccount(id: removing.id, deleteData: false) } }
+            Button("移除账号并删除本地邮件", role: .destructive) { if let removing { service.removeAccount(id: removing.id, deleteData: true) } }
         } message: {
-            Text("会删除本机保存的授权。之后需要重新登录才能同步。本地已下载的邮件不会被删除。")
+            Text("会删除本机保存的授权，不会影响 Gmail 里的邮件。之后可以随时重新添加。")
         }
     }
 

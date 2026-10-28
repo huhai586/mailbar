@@ -38,11 +38,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         HTMLBodyView.prewarm()   // 提前启动网页渲染进程，第一次打开邮件不用等
-        service.notifier.onOpenThread = { [weak self] threadId in
-            self?.showMainWindow(mailbox: threadId == nil ? nil : .allMail, threadId: threadId)   // 点通知：侧栏直接定位到「所有邮件」
+        service.notifier.onOpenThread = { [weak self] accountID, threadId in
+            self?.showMainWindow(mailbox: threadId == nil ? nil : .allMail, threadId: threadId, accountID: accountID)   // 点通知：侧栏直接定位到「所有邮件」
+        }
+        service.notifier.onOpenCalendar = { [weak self] in self?.showCalendar() }
+        service.toasts.onOpen = { [weak self] item in
+            if item.kind == .calendar { self?.showCalendar() }
+            else { self?.showMainWindow(mailbox: item.threadId == nil ? nil : .allMail, threadId: item.threadId, accountID: item.accountID) }
         }
         service.strongAlerts.onOpen = { [weak self] hit in
-            self?.showMainWindow(mailbox: .allMail, threadId: hit.threadId)
+            self?.showMainWindow(mailbox: .allMail, threadId: hit.threadId, accountID: self?.service.accountID(forMessage: hit.messageId))
         }
         service.strongAlerts.onVisibilityChange = { [weak self] in self?.updateActivationPolicy() }
         service.openSettings = { [weak self] tab in self?.showSettings(tab: tab) }
@@ -112,7 +117,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    private func showMainWindow(mailbox: Mailbox?, threadId: String?) {
+    private func showCalendar() {
+        showMainWindow(mailbox: nil, threadId: nil)
+        service.module = .calendar
+    }
+
+    private func showMainWindow(mailbox: Mailbox?, threadId: String?, accountID: String? = nil) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         // 点通知 / 点菜单栏「打开邮件窗口」时，窗口可能正最小化在 Dock 里：先还原
@@ -122,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
         }
-        if mailbox != nil || threadId != nil { service.requestNavigation(mailbox: mailbox, threadId: threadId) }
+        if mailbox != nil || threadId != nil { service.requestNavigation(mailbox: mailbox, threadId: threadId, accountID: accountID) }
     }
 
     // MARK: - Menu

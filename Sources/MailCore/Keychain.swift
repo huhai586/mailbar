@@ -13,7 +13,10 @@ enum Keychain {
     }
 
     static func save(_ data: Data, account: String) throws {
-        SecItemDelete(query(account: account) as CFDictionary)
+        // 先原地更新：旧条目是别的签名的程序（旧版 MailBar、命令行工具）建的时，删除可能被拒绝，再添加就会得到 -25299（条目已存在）
+        let updated = SecItemUpdate(query(account: account) as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updated == errSecSuccess { return }
+        if updated != errSecItemNotFound { SecItemDelete(query(account: account) as CFDictionary) }
         var add = query(account: account)
         add[kSecValueData as String] = data
         let status = SecItemAdd(add as CFDictionary, nil)

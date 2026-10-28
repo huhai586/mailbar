@@ -172,9 +172,31 @@ final class ReaderModel: ObservableObject {
             self?.reloadAll()
         }.store(in: &cancellables)
 
+        // 切换账号：换一个邮件库，选中的会话、搜索词、来源筛选都属于上一个账号，清掉后重新订阅
+        service.$currentAccountID.removeDuplicates().dropFirst().receive(on: DispatchQueue.main).sink { [weak self] _ in
+            self?.accountChanged()
+        }.store(in: &cancellables)
+
         service.$navigation.compactMap { $0 }.receive(on: DispatchQueue.main).sink { [weak self] request in
             self?.apply(request)
         }.store(in: &cancellables)
+    }
+
+    private func accountChanged() {
+        listObservation?.cancel()
+        listObservation = nil
+        messagesObservation?.cancel()
+        messagesObservation = nil
+        selectedThreadID = nil
+        pendingThreadID = nil
+        searchText = ""
+        sourceFilter = nil
+        threads = []
+        messages = []
+        openedUnreadIDs = []
+        detailFilters = [:]
+        reloadThreads(resetPaging: true)
+        reloadAll()
     }
 
     /// 正在搜的词（去掉首尾空白）；没在搜返回 nil。列表和详情都用它高亮
@@ -316,6 +338,7 @@ final class ReaderModel: ObservableObject {
     }
 
     func select(_ mailbox: Mailbox) {
+        service.module = .mail
         searchText = ""
         sourceFilter = nil
         self.mailbox = mailbox
@@ -323,6 +346,7 @@ final class ReaderModel: ObservableObject {
 
     /// 侧栏"来源"：回到收件箱并只看这个来源。
     func selectSource(_ source: String) {
+        service.module = .mail
         searchText = ""
         if mailbox != .label("INBOX") { mailbox = .label("INBOX") }
         sourceFilter = source

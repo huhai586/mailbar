@@ -5,6 +5,7 @@ import SwiftUI
 struct RootView: View {
     @ObservedObject var service: MailService
     @StateObject private var reader: ReaderModel
+    @StateObject private var calendarModel: CalendarModel
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @AppStorage(Pref.appearance) private var appearance = "dark"
@@ -15,17 +16,30 @@ struct RootView: View {
     init(service: MailService) {
         self.service = service
         _reader = StateObject(wrappedValue: ReaderModel(service: service))
+        _calendarModel = StateObject(wrappedValue: CalendarModel(service: service))
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            HSplitView {
-                SidebarView(reader: reader, service: service)
-                    .frame(minWidth: 190, idealWidth: 218, maxWidth: 300, maxHeight: .infinity)
-                ThreadListView(reader: reader, service: service)
-                    .frame(minWidth: 340, idealWidth: 450, maxWidth: 720, maxHeight: .infinity)
-                ThreadDetailView(reader: reader, service: service)
-                    .frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
+            if !service.hasAccounts {
+                WelcomeView(service: service)
+            } else {
+                // 侧栏始终在；选了「日历」时中间和右边两栏换成日历（日程列表 + 日 / 周 / 月视图）
+                HSplitView {
+                    SidebarView(reader: reader, service: service)
+                        .frame(minWidth: 190, idealWidth: 218, maxWidth: 300, maxHeight: .infinity)
+                    if service.module == .calendar {
+                        CalendarAgenda(model: calendarModel, service: service)
+                            .frame(minWidth: 300, idealWidth: 340, maxWidth: 460, maxHeight: .infinity)
+                        CalendarMain(model: calendarModel, service: service)
+                            .frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ThreadListView(reader: reader, service: service)
+                            .frame(minWidth: 340, idealWidth: 450, maxWidth: 720, maxHeight: .infinity)
+                        ThreadDetailView(reader: reader, service: service)
+                            .frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
             }
             StatusBar(service: service, reader: reader)
         }

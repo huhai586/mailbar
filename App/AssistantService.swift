@@ -13,32 +13,34 @@ extension MailService {
     }
 
     func assistantTick(now: Date = Date()) async {
-        guard let store else { return }
-        deliverDueReminders(store: store, now: now)
+        checkCalendarReminders(now: now)
+        // 待办和跟进提醒按账号各看各的邮件库；每天的简报只针对当前账号，一天一份
         let config = AIConfigStore.read()
-        if config.followUpHours > 0, now.timeIntervalSince(lastFollowUpCheck) > 1800 {
-            lastFollowUpCheck = now
-            deliverFollowUps(store: store, now: now, hours: config.followUpHours)
+        let followUps = config.followUpHours > 0 && now.timeIntervalSince(lastFollowUpCheck) > 1800
+        if followUps { lastFollowUpCheck = now }
+        for session in allSessions {
+            deliverDueReminders(store: session.store, accountID: session.id, now: now)
+            if followUps { deliverFollowUps(store: session.store, accountID: session.id, now: now, hours: config.followUpHours) }
         }
-        if config.briefAuto { await autoBrief(store: store, config: config, now: now) }
+        if config.briefAuto, let store { await autoBrief(store: store, config: config, now: now) }
     }
 
-    private func deliverDueReminders(store: MailStore, now: Date) {
+    private func deliverDueReminders(store: MailStore, accountID: String, now: Date) {
         guard let due = try? store.dueReminders(now: now), !due.isEmpty else { return }
         for todo in due {
-            notifier.post(id: "todo-\(todo.id)", title: "提醒", body: todo.text, threadId: todo.groupKey, useDefaultSound: true)
+            notifier.post(id: "todo-\(todo.id)", title: "提醒", body: todo.text, threadId: todo.groupKey, useDefaultSound: true, accountID: accountID)
             try? store.markTodoNotified(todo.id)
         }
         bumpTodos()
     }
 
-    private func deliverFollowUps(store: MailStore, now: Date, hours: Int) {
+    private func deliverFollowUps(store: MailStore, accountID: String, now: Date, hours: Int) {
         guard Pref.alertsOn,
               let stale = try? FollowUps.collect(store: store, now: now, olderThan: TimeInterval(hours) * 3600),
               !stale.isEmpty else { return }
         let titles = stale.prefix(3).map { $0.prSubject ?? $0.subject }.joined(separator: "\n")
         notifier.post(id: "followup-\(UUID().uuidString)", title: "\(stale.count) 件事等你超过 \(hours) 小时", body: titles,
-                      threadId: stale.count == 1 ? stale[0].id : nil, useDefaultSound: true)
+                      threadId: stale.count == 1 ? stale[0].id : nil, useDefaultSound: true, accountID: accountID)
     }
 
     private func autoBrief(store: MailStore, config: AIConfig, now: Date) async {

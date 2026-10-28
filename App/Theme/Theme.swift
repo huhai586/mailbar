@@ -51,6 +51,13 @@ enum Theme {
     static let pink = dynamic(0xE58AB0, 0xA83E6B, night: 0xF27CB0, day: 0xB83280)
     static let gray = dynamic(0x8A8273, 0x7A756A, night: 0x8190B5, day: 0x6B778C)
 
+    /// 账号的识别色（和 AccountRegistry.paletteSize 个数一致）：账号切换器、日历里的日程都用它区分账号。
+    static var accountColors: [Color] { [blue, green, orange, purple, pink, cyan, yellow, red] }
+    static func accountColor(_ index: Int) -> Color {
+        let colors = accountColors
+        return colors[((index % colors.count) + colors.count) % colors.count]
+    }
+
     static func color(named name: String) -> Color {
         switch name {
         case "red": return red

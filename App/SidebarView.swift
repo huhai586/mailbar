@@ -36,6 +36,7 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 0) {
             brand
+            AccountSwitcher(service: service).padding(.horizontal, 8).padding(.bottom, 6)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.pad(14)) {
                     section("来源") {
@@ -87,6 +88,7 @@ struct SidebarView: View {
                             }
                         }
                     }
+                    calendarEntry
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
@@ -100,7 +102,7 @@ struct SidebarView: View {
 
     /// 点 Sift 标志：取消选中的邮件，右边回到「今日概览」。
     private var brand: some View {
-        Button { reader.selectedThreadID = nil } label: {
+        Button { service.module = .mail; reader.selectedThreadID = nil } label: {
             HStack(spacing: 8) {
                 Image(nsImage: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage)
                     .resizable()
@@ -140,7 +142,7 @@ struct SidebarView: View {
     private func sourceRow(_ source: String, _ count: SourceCount) -> some View {
         let style = ReaderModel.style(forSource: source)
         let color = Theme.color(named: style.color)
-        let selected = reader.mailbox == .label("INBOX") && reader.sourceFilter == source
+        let selected = service.module == .mail && reader.mailbox == .label("INBOX") && reader.sourceFilter == source
         return Button { reader.selectSource(source) } label: {
             HStack(spacing: 8) {
                 ServiceIcon(source: source, size: 13, color: selected ? Theme.accent : Theme.muted).frame(width: 16)
@@ -169,7 +171,7 @@ struct SidebarView: View {
     }
 
     private func row(icon: String, iconColor: Color, title: String, mailbox: Mailbox, badge: Int, badgeColor: Color) -> some View {
-        let selected = reader.mailbox == mailbox && reader.sourceFilter == nil
+        let selected = service.module == .mail && reader.mailbox == mailbox && reader.sourceFilter == nil
         return Button { reader.select(mailbox) } label: {
             HStack(spacing: 8) {
                 Image(systemName: icon).font(.system(size: 11.5)).foregroundStyle(selected ? iconColor : iconColor.opacity(0.85)).frame(width: 16)
@@ -209,7 +211,7 @@ struct SidebarView: View {
     /// 分组里的「其他」：这个来源里没被上面几条规则命中的邮件。
     private func restRow(_ group: RuleGroup) -> some View {
         let mailbox = Mailbox.sourceRest(source: group.key, excluding: group.rules.map(\.name))
-        let selected = reader.mailbox == mailbox && reader.sourceFilter == nil
+        let selected = service.module == .mail && reader.mailbox == mailbox && reader.sourceFilter == nil
         return Button { reader.select(mailbox) } label: {
             HStack(spacing: 8) {
                 Circle().fill(Theme.faint).frame(width: 7, height: 7).frame(width: 16)
@@ -228,7 +230,7 @@ struct SidebarView: View {
 
     private func ruleRow(_ rule: Rule, indent: Bool = false, stripPrefix: String? = nil) -> some View {
         let mailbox = Mailbox.rule(rule.name)
-        let selected = reader.mailbox == mailbox && reader.sourceFilter == nil
+        let selected = service.module == .mail && reader.mailbox == mailbox && reader.sourceFilter == nil
         let color = Theme.color(for: rule)
         return Button { reader.select(mailbox) } label: {
             HStack(spacing: 8) {
@@ -250,23 +252,33 @@ struct SidebarView: View {
         .buttonStyle(PlainPointerButtonStyle())
     }
 
+    /// 日历入口：和邮箱并列的另一个模块；选中后中间和右边两栏换成日历（侧栏不变），点上面任何邮箱 / 来源 / 规则回到邮件。
+    private var calendarEntry: some View {
+        let selected = service.module == .calendar
+        return Button { service.module = .calendar } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "calendar").font(.system(size: 11.5)).foregroundStyle(selected ? Theme.accent : Theme.muted).frame(width: 16)
+                Text("日历").font(Theme.ui(12.5, selected ? .semibold : .regular)).foregroundStyle(selected ? Theme.text : Theme.text.opacity(0.88))
+                Spacer(minLength: 4)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, Theme.pad(4.5))
+            .navSelected(selected)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainPointerButtonStyle())
+    }
+
     private var footer: some View {
         VStack(alignment: .leading, spacing: 6) {
             Divider().overlay(Theme.border)
             HStack(spacing: 6) {
-                VStack(alignment: .leading, spacing: 2) {
-                    if let account = service.accountEmail {
-                        Text(account).font(Theme.mono(10.5)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
-                    }
-                    if service.loginRequired {
-                        Button("登录 Google…") { service.signIn() }.controlSize(.small)
-                    }
+                if service.loginRequired {
+                    Button("重新登录…") { service.signIn() }.controlSize(.small)
                 }
                 Spacer()
                 Button { service.manualSync() } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .rotationEffect(.degrees(service.syncing ? 360 : 0))
-                        .animation(service.syncing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: service.syncing)
+                    SyncIcon(syncing: service.syncing)
                 }
                 .buttonStyle(PlainPointerButtonStyle())
                 .foregroundStyle(service.syncing ? Theme.accent : Theme.muted)

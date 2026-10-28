@@ -9,6 +9,8 @@ struct StoredToken: Codable, Equatable {
     var scope: String?
 
     var canModify: Bool { scope?.contains("gmail.modify") ?? false }
+    /// 旧版本授权的范围里没有日历；要看日历需要重新授权一次
+    var canReadCalendar: Bool { scope?.contains("auth/calendar") ?? false }
 }
 
 private final class TokenCache: @unchecked Sendable {
@@ -22,19 +24,25 @@ private final class TokenCache: @unchecked Sendable {
 
 public struct OAuthClient: Sendable {
     static let readScope = "https://www.googleapis.com/auth/gmail.readonly"
-    /// 标记已读/未读需要 modify；它包含读取权限，所以登录只请求这一个范围
-    static let scope = "https://www.googleapis.com/auth/gmail.modify"
-    static let account = "gmail-oauth-token"
+    /// 标记已读/未读需要 modify（包含读取权限）；日历只读用来在「日历」模块里显示日程
+    static let calendarScope = "https://www.googleapis.com/auth/calendar.readonly"
+    static let scope = "https://www.googleapis.com/auth/gmail.modify " + calendarScope
+    /// 第一个账号（升级前就有的那个）的钥匙串条目名；之后添加的账号用 `gmail-oauth-token:<邮箱>`
+    public static let defaultTokenKey = "gmail-oauth-token"
+    static let account = defaultTokenKey
 
     let config: ClientConfig
+    /// 这个账号的 token 在钥匙串里的条目名
+    public let tokenKey: String
     /// false 时（常驻程序）需要登录会抛 loginRequired，而不是自己弹出浏览器。
     let interactive: Bool
     /// 拷贝共享：避免每个请求都读一次 Keychain
     private let cache = TokenCache()
 
-    public init(config: ClientConfig, interactive: Bool = true) {
+    public init(config: ClientConfig, interactive: Bool = true, tokenKey: String = OAuthClient.defaultTokenKey) {
         self.config = config
         self.interactive = interactive
+        self.tokenKey = tokenKey
     }
 
     /// 返回可用的 access token：优先用缓存，过期则刷新，没有则走浏览器登录。
@@ -55,12 +63,46 @@ public struct OAuthClient: Sendable {
     /// 当前 token 是否已授权修改邮件（标记已读/未读）。旧的只读授权需要重新登录一次。
     public var canModify: Bool { loadToken()?.canModify ?? false }
 
+    /// 当前 token 是否已授权读取日历。
+    public var canReadCalendar: Bool { loadToken()?.canReadCalendar ?? false }
+
     /// 主动登录（浏览器授权），常驻程序在 loginRequired 后由用户触发。
-    public func signIn() async throws {
-        _ = try await login()
+    /// loginHint：提示 Google 登录哪个邮箱（重新授权已有账号时用）。
+    public func signIn(loginHint: String? = nil) async throws {
+        _ = try await login(loginHint: loginHint)
     }
 
-    func login() async throws -> StoredToken {
+    /// 添加一个新账号：弹出浏览器让用户选 Google 账号，授权后用 profile 查出邮箱，token 存到以邮箱命名的钥匙串条目。
+    /// 返回邮箱和条目名；同一个邮箱已经添加过也会走到这里，由调用方决定怎么处理。
+    public static func addAccount(config: ClientConfig) async throws -> (email: String, tokenKey: String) {
+        let pendingKey = "\(defaultTokenKey):pending"
+        let temp = OAuthClient(config: config, tokenKey: pendingKey)
+        defer { Keychain.delete(account: pendingKey) }
+        _ = try await temp.login(loginHint: nil, selectAccount: true)
+        let email = try await GmailClient(oauth: temp).profile().emailAddress.lowercased()
+        let key = tokenKey(forEmail: email)
+        guard let token = temp.loadToken() else { throw MailError.loginRequired }
+        try Keychain.save(try JSONEncoder().encode(token), account: key)
+        return (email, key)
+    }
+
+    public static func tokenKey(forEmail email: String) -> String { "\(defaultTokenKey):\(email.lowercased())" }
+
+    /// 重新授权一个已有账号（比如补上日历权限）；用户在浏览器里选了别的邮箱会报错，token 不会被换掉。
+    public func reauthorize(expectedEmail: String) async throws {
+        let stored = loadToken()
+        let token = try await login(loginHint: expectedEmail, save: false)
+        let probe = OAuthClient(config: config, tokenKey: tokenKey)
+        probe.cache.token = token
+        let email = try await GmailClient(oauth: probe).profile().emailAddress.lowercased()
+        guard email == expectedEmail.lowercased() else {
+            cache.token = stored
+            throw MailError.config("授权的是 \(email)，不是 \(expectedEmail)。请在浏览器里选择 \(expectedEmail)。")
+        }
+        try saveToken(token)
+    }
+
+    func login(loginHint: String? = nil, selectAccount: Bool = false, save: Bool = true) async throws -> StoredToken {
         let verifier = Self.randomURLSafe(bytes: 32)
         let challenge = Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
         let state = Self.randomURLSafe(bytes: 16)
@@ -80,9 +122,9 @@ public struct OAuthClient: Sendable {
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "access_type", value: "offline"),
-            URLQueryItem(name: "prompt", value: "consent"),
+            URLQueryItem(name: "prompt", value: selectAccount ? "select_account consent" : "consent"),
         ]
-        if let hint = ProcessInfo.processInfo.environment["MAIL_LOGIN_HINT"] {
+        if let hint = loginHint ?? ProcessInfo.processInfo.environment["MAIL_LOGIN_HINT"] {
             items.append(URLQueryItem(name: "login_hint", value: hint))
         }
         comps.queryItems = items
@@ -115,7 +157,7 @@ public struct OAuthClient: Sendable {
         let token = StoredToken(accessToken: resp.access_token, refreshToken: refreshToken,
                                 expiry: Date().addingTimeInterval(TimeInterval(resp.expires_in)),
                                 scope: resp.scope ?? Self.scope)
-        try saveToken(token)
+        if save { try saveToken(token) }
         return token
     }
 
@@ -168,16 +210,16 @@ public struct OAuthClient: Sendable {
 
     // MARK: - Storage
 
-    private func loadToken() -> StoredToken? {
+    func loadToken() -> StoredToken? {
         if let cached = cache.token { return cached }
-        guard let data = Keychain.load(account: Self.account),
+        guard let data = Keychain.load(account: tokenKey),
               let token = try? JSONDecoder().decode(StoredToken.self, from: data) else { return nil }
         cache.token = token
         return token
     }
 
     private func saveToken(_ token: StoredToken) throws {
-        try Keychain.save(try JSONEncoder().encode(token), account: Self.account)
+        try Keychain.save(try JSONEncoder().encode(token), account: tokenKey)
         cache.token = token
     }
 
@@ -185,7 +227,7 @@ public struct OAuthClient: Sendable {
 
     /// 退出登录：删除 Keychain 里的 token，并清掉内存缓存。
     public func signOut() {
-        Keychain.delete(account: Self.account)
+        Keychain.delete(account: tokenKey)
         cache.token = nil
     }
 

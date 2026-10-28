@@ -14,6 +14,7 @@ struct AISettingsView: View {
     @State private var memories: [AIMemory] = []
     @State private var newMemory = ""
     @State private var decisions: [AIDecision] = []
+    @State private var previewing: AIDecision?
 
     private struct SampleResult: Identifiable {
         let id: String
@@ -141,6 +142,9 @@ struct AISettingsView: View {
                         feedbackButton(decision, value: 1, symbol: "hand.thumbsup")
                         feedbackButton(decision, value: -1, symbol: "hand.thumbsdown")
                     }
+                    .contentShape(Rectangle())
+                    .onTapGesture { previewing = decision }
+                    .help("点击预览这封邮件")
                 }
             } header: {
                 Text("最近的 AI 判断")
@@ -174,6 +178,9 @@ struct AISettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(item: $previewing) { decision in
+            DecisionPreview(decision: decision, service: service, onFeedback: reloadAssistantData)
+        }
         .onAppear {
             for provider in config.providers { keys[provider.id] = AIKeyStore.key(for: provider.id) }
             reloadAssistantData()

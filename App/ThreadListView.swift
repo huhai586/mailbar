@@ -35,9 +35,7 @@ struct ThreadListView: View {
                 groupToggle
                 filterToggle
                 Button { service.manualSync() } label: {
-                    Image(systemName: "arrow.clockwise").font(.system(size: 12))
-                        .rotationEffect(.degrees(service.syncing ? 360 : 0))
-                        .animation(service.syncing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: service.syncing)
+                    SyncIcon(syncing: service.syncing).font(.system(size: 12))
                 }
                 .buttonStyle(PlainPointerButtonStyle())
                 .foregroundStyle(Theme.muted)

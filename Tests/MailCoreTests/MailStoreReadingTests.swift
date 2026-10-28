@@ -130,6 +130,12 @@ private func store(with messages: [ParsedMessage]) throws -> MailStore {
         #expect(try s.messages(inThread: "missing").isEmpty)
     }
 
+    @Test func singleMessageLookupById() throws {
+        let s = try store(with: [makeMessage("1", subject: "Hi", from: "alice@x.com", body: "first", date: 1000, labels: ["INBOX"], thread: "T")])
+        #expect(try s.message(id: "1")?.bodyText == "first")
+        #expect(try s.message(id: "nope") == nil)
+    }
+
     @Test func labelsReportCountsAndUnread() throws {
         let s = try store(with: [
             makeMessage("1", labels: ["INBOX", "UNREAD"]),

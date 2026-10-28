@@ -46,6 +46,12 @@ enum Pref {
     static let alertMaxAgeHours = "alertMaxAgeHours"
     static let summaryThreshold = "summaryThreshold"
     static let defaultSound = "defaultSound"
+    /// 通知的呈现方式：card = 应用自己的通知卡片（显示时长可调），system = macOS 系统通知（时长由系统决定）
+    static let notificationStyle = "notificationStyle"
+    static let toastSeconds = "toastSeconds"
+    // 日历提醒
+    static let calendarReminders = "calendarReminders"
+    static let calendarLeadMinutes = "calendarLeadMinutes"
     // 强提醒
     static let strongRepeatSeconds = "strongRepeatSeconds"
     static let strongMaxMinutes = "strongMaxMinutes"
@@ -58,6 +64,11 @@ enum Pref {
     static let settingsTab = "settingsTab"
     /// 当前授权是否允许修改邮件。授权范围不是机密，缓存在这里，启动时就不用为了它去读钥匙串（会卡住界面）
     static let canModifyCache = "canModifyCache"
+    static let canReadCalendarCache = "canReadCalendarCache"
+    /// 上次在用的账号（邮箱）
+    static let currentAccount = "currentAccount"
+    /// 日历模块的显示方式：day / week / month
+    static let calendarMode = "calendarMode"
 
     static let defaults: [String: Any] = [
         appearance: "dark",
@@ -87,6 +98,10 @@ enum Pref {
         alertMaxAgeHours: 24,
         summaryThreshold: 5,
         defaultSound: "",
+        notificationStyle: "card",
+        toastSeconds: 10,
+        calendarReminders: true,
+        calendarLeadMinutes: 0,
         strongRepeatSeconds: 10,
         strongMaxMinutes: 5,
         strongBounceDock: true,
@@ -95,7 +110,20 @@ enum Pref {
         loadOlderBatch: 50,
         settingsTab: "general",
         canModifyCache: false,
+        canReadCalendarCache: false,
+        calendarMode: "day",
     ]
+
+    /// 按账号缓存的开关。第一个账号沿用升级前的全局键，升级后第一次启动不会丢状态。
+    static func cachedFlag(_ key: String, account: String) -> Bool {
+        let defaults = UserDefaults.standard
+        if let value = defaults.object(forKey: "\(key).\(account)") as? Bool { return value }
+        return defaults.bool(forKey: key)
+    }
+
+    static func setCachedFlag(_ key: String, account: String, _ value: Bool) {
+        UserDefaults.standard.set(value, forKey: "\(key).\(account)")
+    }
 
     static func register() { UserDefaults.standard.register(defaults: defaults) }
 
@@ -113,6 +141,11 @@ enum Pref {
     /// 0 表示不限
     static var alertMaxAgeSeconds: TimeInterval { TimeInterval(store.integer(forKey: alertMaxAgeHours)) * 3600 }
     static var summaryThresholdCount: Int { max(1, store.integer(forKey: summaryThreshold)) }
+    static var useToastCards: Bool { (store.string(forKey: notificationStyle) ?? "card") == "card" }
+    /// 通知卡片显示多少秒；0 = 一直显示到点击
+    static var toastDuration: TimeInterval { TimeInterval(store.integer(forKey: toastSeconds)) }
+    static var calendarRemindersOn: Bool { store.bool(forKey: calendarReminders) }
+    static var calendarLead: TimeInterval { TimeInterval(max(0, store.integer(forKey: calendarLeadMinutes))) * 60 }
     static var defaultSoundName: String { store.string(forKey: defaultSound) ?? "" }
     static var strongRepeat: TimeInterval { TimeInterval(max(3, store.integer(forKey: strongRepeatSeconds))) }
     /// 0 表示一直响到用户处理
