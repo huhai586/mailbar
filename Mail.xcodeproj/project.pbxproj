@@ -14,6 +14,7 @@
 		1319FEB3D48E3E3866473019 /* TodoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7EBFBEBA65399DBF70C6D9 /* TodoViews.swift */; };
 		17329188DD3D58CD346AA613 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20475B95CCA861DA6B39AB80 /* AssistantService.swift */; };
 		1C35D3D694530D0333D6BEAD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D309B25F7B6E4597AAD4F658 /* RootView.swift */; };
+		1E3F7FBC1445697B0A4B2EDA /* AppCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B2E5B740B5C97027284412 /* AppCommands.swift */; };
 		2181CC62145BAB46B5C8693D /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */; };
 		23EA3B37A8246C423C8D22E4 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F74520B1F8BFA60DA89E017F /* JetBrainsMono-Bold.ttf */; };
 		29E7E24978DD3569BC7332CD /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B87108479D005F4F950980 /* CalendarView.swift */; };
@@ -88,6 +89,7 @@
 		88EB400AA4BA9B7E4B17835C /* RichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichText.swift; sourceTree = "<group>"; };
 		907DB5539308A694CDC80692 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		96083886BC61131B09E3DE31 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
+		98B2E5B740B5C97027284412 /* AppCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCommands.swift; sourceTree = "<group>"; };
 		9A1B99E16F41BE61A9EA2CA7 /* ToastCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastCenter.swift; sourceTree = "<group>"; };
 		A4E1B89E529222E6E550D764 /* HTMLBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLBodyView.swift; sourceTree = "<group>"; };
 		A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -127,6 +129,7 @@
 			children = (
 				226123C88B95EEC0E54EBB8F /* AccountViews.swift */,
 				856DB34509EA4B91185556A8 /* AISettingsView.swift */,
+				98B2E5B740B5C97027284412 /* AppCommands.swift */,
 				216A8DE045F0669B5E5B00C5 /* AppDelegate.swift */,
 				A7CFB1C321A4E8A8EC2DBB33 /* Assets.xcassets */,
 				20475B95CCA861DA6B39AB80 /* AssistantService.swift */,
@@ -308,6 +311,7 @@
 			files = (
 				60EF341F9A7AEE3DBA6ABF1A /* AISettingsView.swift in Sources */,
 				AEF67CC8D2BA66F3395B5CCC /* AccountViews.swift in Sources */,
+				1E3F7FBC1445697B0A4B2EDA /* AppCommands.swift in Sources */,
 				E97B6564495C812FF46E44D8 /* AppDelegate.swift in Sources */,
 				17329188DD3D58CD346AA613 /* AssistantService.swift in Sources */,
 				AE757AD920B7D1601B2CF570 /* AssistantViews.swift in Sources */,
@@ -353,7 +357,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -362,7 +366,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.1;
+				MARKETING_VERSION = 0.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = Sift;
 				SDKROOT = macosx;
@@ -496,7 +500,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = N29KZ7R4WK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -505,7 +509,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.1;
+				MARKETING_VERSION = 0.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.huhai.mailbar;
 				PRODUCT_NAME = Sift;
 				SDKROOT = macosx;

@@ -142,8 +142,9 @@ private struct ToastCard: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
         .overlay(alignment: .topTrailing) {
             if hovering {
-                Button { center.dismiss(item.id) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint) }
-                    .buttonStyle(.plain).padding(6)
+                Button { center.dismiss(item.id) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint).iconHitTarget(22) }
+                    .buttonStyle(.plain).padding(2)
+                    .accessibilityLabel("关闭通知")
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 12))

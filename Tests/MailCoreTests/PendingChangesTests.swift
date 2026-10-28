@@ -16,6 +16,18 @@ import Testing
         try store.labelIds(of: id).contains("UNREAD")
     }
 
+    @Test func setReadReportsOnlyTheMessagesThatActuallyChanged() async throws {
+        let (api, store, actions, _) = try await setup(["a", "b", "c"])
+        _ = api
+        try store.setLabels(messageId: "b", labelIds: ["INBOX"])          // b 本来就是已读
+        let changed = try await actions.setRead(true, messageIds: ["a", "b", "c"])
+        #expect(Set(changed) == ["a", "c"])                               // 撤销时只该恢复这两封
+        #expect(try await actions.setRead(true, messageIds: ["a", "b", "c"]).isEmpty)
+        let undone = try await actions.setRead(false, messageIds: changed)
+        #expect(Set(undone) == ["a", "c"])
+        #expect(try isUnread(store, "a") && isUnread(store, "c") && !isUnread(store, "b"))
+    }
+
     @Test func networkFailureKeepsTheLocalChangeAndRetriesLater() async throws {
         let (api, store, actions, _) = try await setup()
         api.batchModifyError = URLError(.notConnectedToInternet)

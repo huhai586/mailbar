@@ -71,6 +71,8 @@ enum Pref {
     static let currentAccount = "currentAccount"
     /// 日历模块的显示方式：day / week / month
     static let calendarMode = "calendarMode"
+    /// 侧栏是否显示（视图菜单 / ⌃⌘S 切换）
+    static let sidebarVisible = "sidebarVisible"
 
     static let defaults: [String: Any] = [
         appearance: "dark",
@@ -115,6 +117,7 @@ enum Pref {
         canModifyCache: false,
         canReadCalendarCache: false,
         calendarMode: "day",
+        sidebarVisible: true,
     ]
 
     /// 按账号缓存的开关。第一个账号沿用升级前的全局键，升级后第一次启动不会丢状态。

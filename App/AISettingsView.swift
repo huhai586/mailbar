@@ -51,7 +51,7 @@ struct AISettingsView: View {
                         .font(.system(size: 12, design: .monospaced))
                         .frame(height: 130)
                         .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
-                    Text("邮件详情顶部「AI 摘要」用的要求。AI 能看到这封邮件或整个 PR 的全部往来（例行机器人消息压成一行，超长时保留最新的约 6 万字）。改了之后，再打开的邮件会按新要求重新生成。")
+                    Text("邮件详情头部「AI 摘要」标签点开后的内容，按这里的要求生成。AI 能看到这封邮件或整个 PR 的全部往来（例行机器人消息压成一行，超长时保留最新的约 6 万字）。改了之后，再打开的邮件会按新要求重新生成。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Toggle("打开 PR / 会话时自动生成 AI 摘要", isOn: $config.autoSummarize)
@@ -114,15 +114,19 @@ struct AISettingsView: View {
                         Button(role: .destructive) { deleteMemory(memory) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
                     }
                 }
-                HStack {
-                    TextField("添加一条，比如「Dependabot 的 PR 不用通知我」", text: $newMemory).onSubmit(addMemory)
+                HStack(spacing: 8) {
+                    // 输入框占满整行、文字左对齐（Form 默认会把输入框的标题挪到左边、输入框挤到右边）
+                    TextField("", text: $newMemory, prompt: Text("添加一条，比如「Dependabot 的 PR 不用通知我」"))
+                        .textFieldStyle(.roundedBorder).multilineTextAlignment(.leading).labelsHidden()
+                        .frame(maxWidth: .infinity)
+                        .onSubmit(addMemory)
                     Button("添加", action: addMemory).disabled(newMemory.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             } header: {
                 Text("记忆")
             } footer: {
                 Text("助手和通知判断都会参考这些。你也可以直接对助手说「记住……」。")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Section {
@@ -145,12 +149,15 @@ struct AISettingsView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { previewing = decision }
                     .help("点击预览这封邮件")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("预览这封邮件")
                 }
             } header: {
                 Text("最近的 AI 判断")
             } footer: {
                 Text("判断得不对就点 👎，之后遇到类似的邮件，AI 会参考你的纠正。通知上也有同样的 👍 / 👎 按钮。")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Section {
@@ -170,7 +177,7 @@ struct AISettingsView: View {
                 Text("AI 服务")
             } footer: {
                 Text("本应用不内置模型，只负责调用你配置的服务。OpenAI 兼容格式覆盖 OpenAI、DeepSeek、OpenRouter、Ollama、LM Studio 等绝大多数服务。API Key 存在系统钥匙串里。")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let saveError {

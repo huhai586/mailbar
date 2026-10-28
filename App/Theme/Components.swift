@@ -197,3 +197,26 @@ struct PlainPointerButtonStyle: ButtonStyle {
             .pointerStyle(.link)
     }
 }
+
+
+extension View {
+    /// 纯图标按钮的点击区域不小于 24×24（苹果在 macOS 上建议至少 20×20，默认 28×28）：图标本身可以小，可点的范围不能小。
+    func iconHitTarget(_ size: CGFloat = 24) -> some View {
+        frame(minWidth: size, minHeight: size).contentShape(Rectangle())
+    }
+}
+
+/// 显示 / 隐藏侧栏的按钮（和「视图 > 隐藏侧栏」、⌃⌘S 是同一个开关）。
+struct SidebarToggleButton: View {
+    @AppStorage(Pref.sidebarVisible) private var visible = true
+
+    var body: some View {
+        Button { visible.toggle() } label: {
+            Image(systemName: "sidebar.left").font(.system(size: 13)).iconHitTarget()
+        }
+        .buttonStyle(PlainPointerButtonStyle())
+        .foregroundStyle(Theme.muted)
+        .help(visible ? "隐藏侧栏（⌃⌘S）" : "显示侧栏（⌃⌘S）")
+        .accessibilityLabel(visible ? "隐藏侧栏" : "显示侧栏")
+    }
+}

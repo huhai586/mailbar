@@ -415,7 +415,7 @@ final class ReaderModel: ObservableObject {
     /// 一键清理：把收件箱里所有未读的例行机器人邮件标为已读。
     func cleanRoutine() {
         guard let store = service.store, let ids = try? store.unreadMessageIDs(kind: .botRoutine), !ids.isEmpty else { return }
-        Task { await service.setRead(true, messageIds: ids) }
+        Task { await service.setRead(true, messageIds: ids, registerUndo: true) }
     }
 
     // MARK: - Read state
@@ -464,9 +464,9 @@ final class ReaderModel: ObservableObject {
         }
         Task {
             if !unread.isEmpty {
-                await service.setRead(true, messageIds: unread.map(\.id))
+                await service.setRead(true, messageIds: unread.map(\.id), registerUndo: true)
             } else if let last = all.last {
-                await service.setRead(false, messageIds: [last.id])
+                await service.setRead(false, messageIds: [last.id], registerUndo: true)
             }
         }
     }

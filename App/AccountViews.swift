@@ -37,6 +37,7 @@ struct AccountSwitcher: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .help("切换账号")
+        .accessibilityLabel("账号：\(service.accountEmail ?? "没有账号")，切换账号")
     }
 
     private var color: Color {

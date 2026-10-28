@@ -142,9 +142,6 @@ private struct ThreadConversation: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Theme.pad(10)) {
-                        if let key = groupID {
-                            AISummaryCard(reader: reader, groupKey: key, messages: messages, title: subject)
-                        }
                         if shownMessages.isEmpty {
                             Text("这一类里没有邮件").font(Theme.ui(12.5)).foregroundStyle(Theme.faint).padding(.top, 40)
                         }
@@ -414,6 +411,10 @@ private struct ThreadConversation: View {
                     }
                 }
                 if ciFailures > 0 { Chip(text: "CI 失败 ×\(ciFailures)", color: Theme.red, mono: false) }
+                // AI 摘要：头部的一个小标签，点开看完整内容
+                if let key = groupID {
+                    AISummaryCard(reader: reader, groupKey: key, messages: messages, title: subject)
+                }
                 if matchedRules.isEmpty, let event = info?.event, ciFailures == 0 || event.label != "CI 失败" {
                     if ["提及你", "团队提及", "提到你"].contains(event.label), !mentionIDs.isEmpty {
                         mentionChip(event.label, color: Theme.color(named: event.color))
@@ -717,6 +718,10 @@ struct MessageCard: View {
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.easeInOut(duration: 0.12)) { expanded.toggle() } }
         .pointerStyle(.link)
+        // VoiceOver：这一行是个展开 / 收起的开关，不是普通文字
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(expanded ? "收起这封邮件" : "展开这封邮件")
+        .accessibilityAction { withAnimation(.easeInOut(duration: 0.12)) { expanded.toggle() } }
     }
 
     private static let kindChoices: [(MessageKind, String)] = [

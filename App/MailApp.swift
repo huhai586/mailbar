@@ -11,6 +11,7 @@ struct MailApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 780)
+        .commands { AppCommands(service: delegate.service) }
 
         Settings {
             SettingsView(service: delegate.service)

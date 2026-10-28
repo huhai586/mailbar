@@ -92,10 +92,11 @@ private struct CalendarHeader: View {
                 ForEach(CalendarModel.Mode.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented).labelsHidden().frame(width: 150)
-            Button { service.manualSync() } label: { SyncIcon(syncing: service.calendarSyncing) }
+            Button { service.manualSync() } label: { SyncIcon(syncing: service.calendarSyncing).iconHitTarget() }
                 .buttonStyle(PlainPointerButtonStyle())
                 .foregroundStyle(service.calendarSyncing ? Theme.accent : Theme.muted)
                 .help("立即同步日历")
+                .accessibilityLabel("立即同步日历")
         }
         .padding(.horizontal, 16)
         .padding(.top, 34)
@@ -103,8 +104,9 @@ private struct CalendarHeader: View {
     }
 
     private func navButton(_ icon: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: icon).font(.system(size: 11, weight: .semibold)).frame(width: 22, height: 22) }
+        Button(action: action) { Image(systemName: icon).font(.system(size: 11, weight: .semibold)).iconHitTarget() }
             .buttonStyle(PlainPointerButtonStyle()).foregroundStyle(Theme.muted)
+            .accessibilityLabel(icon == "chevron.left" ? "上一个" : "下一个")
     }
 }
 
@@ -142,9 +144,12 @@ struct CalendarAgenda: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("日程").font(Theme.ui(13, .semibold)).foregroundStyle(Theme.muted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16).padding(.top, 38).padding(.bottom, 8)
+            HStack(spacing: 6) {
+                SidebarToggleButton()
+                Text("日程").font(Theme.ui(13, .semibold)).foregroundStyle(Theme.muted)
+                Spacer()
+            }
+            .padding(.horizontal, 12).padding(.top, 34).padding(.bottom, 6)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(model.agendaWeeks.enumerated()), id: \.offset) { _, week in
@@ -247,6 +252,9 @@ private struct AgendaDayRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainPointerButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(CalendarFormat.weekdayShort(day))，\(CalendarFormat.monthShort(day))\(CalendarFormat.dayNumber(day))日，" + (events.isEmpty ? "无日程" : "\(events.count) 项日程：" + events.prefix(3).map(\.event.title).joined(separator: "、")))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -284,6 +292,10 @@ private struct EventPopover: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(item.event.title)，\(CalendarFormat.timeRange(item.event))，\(item.event.calendarName)\(item.event.isOwnCalendar ? "" : "（订阅的他人日历）")")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("查看详情")
             .onTapGesture { showing = true }
             .popover(isPresented: $showing, arrowEdge: .trailing) { EventDetail(item: item) }
     }

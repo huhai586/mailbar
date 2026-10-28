@@ -346,8 +346,39 @@ struct AISummaryCard: View {
     /// 只有真人或出问题的机器人消息才值得摘要；整个会话只有例行机器人时没什么可总结
     private var summarizable: Bool { messages.contains { $0.kind != MessageKind.botRoutine.rawValue } }
 
+    @State private var showing = false
+
+    /// 头部标签行里的一个小标签，点开才是完整的摘要（弹窗）。不再占着详情顶部的位置：摘要是辅助，邮件本身才是主角。
     var body: some View {
         if reader.aiConfigured, summarizable {
+            Button { showing.toggle() } label: { chip }
+                .buttonStyle(PlainPointerButtonStyle())
+                .help(summary == nil ? "让 AI 读完这个讨论并总结" : "查看 AI 摘要")
+                .accessibilityLabel(summary == nil ? "AI 摘要，还没有生成" : "AI 摘要")
+                .popover(isPresented: $showing, arrowEdge: .bottom) { panel }
+                .task(id: token) { await load() }
+        }
+    }
+
+    /// 标签：和头部其他标签同一个大小，用灰色（不抢眼）；生成中转圈，有待办时带上数量。
+    private var chip: some View {
+        HStack(spacing: 3) {
+            if loading { ProgressView().controlSize(.mini).scaleEffect(0.7).frame(width: 10, height: 10) }
+            else { Image(systemName: "sparkles").font(.system(size: 8.5)) }
+            Text(summary == nil ? "AI 摘要" : "摘要")
+            if let todos = summary?.todos.count, todos > 0 { Text("· \(todos) 待办").foregroundStyle(Theme.orange) }
+        }
+        .font(Theme.ui(10.5, .medium))
+        .foregroundStyle(Theme.muted)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1.5)
+        .background(Theme.muted.opacity(0.10), in: RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.muted.opacity(0.3), lineWidth: 0.5))
+        .fixedSize()
+    }
+
+    private var panel: some View {
+        ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Label("AI 摘要", systemImage: "sparkles").font(Theme.mono(10.5, .semibold)).tracking(0.4).foregroundStyle(Theme.accent)
@@ -387,12 +418,12 @@ struct AISummaryCard: View {
                 }
                 if let error { Text(error).font(Theme.ui(11.5)).foregroundStyle(Theme.red) }
             }
-            .padding(12)
+            .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.accent.opacity(0.25), lineWidth: 1))
-            .task(id: token) { await load() }
         }
+        .frame(width: 440)
+        .frame(maxHeight: 420)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// 先读缓存；没有缓存且设置了「自动生成」才联网。

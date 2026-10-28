@@ -213,7 +213,7 @@ struct RulesSettingsView: View {
     @ViewBuilder
     private var editor: some View {
         if let id = model.selection, model.selectedEntry != nil {
-            RuleEditor(rule: model.binding(for: id), preview: model.preview, problems: model.problems, warnings: model.warnings)
+            RuleEditor(rule: model.binding(for: id), preview: model.preview, problems: model.problems, warnings: model.warnings, service: service)
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "line.3.horizontal.decrease.circle").font(.system(size: 36)).foregroundStyle(.tertiary)
@@ -282,6 +282,8 @@ private struct RuleEditor: View {
     let preview: RulePreview?
     let problems: [String]
     let warnings: [String]
+    let service: MailService
+    @State private var previewing: MessageSummary?
 
     private var level: Binding<AlertLevel> {
         Binding(
@@ -328,7 +330,12 @@ private struct RuleEditor: View {
     var body: some View {
         Form {
             Section {
-                TextField("规则名称", text: $rule.name).textFieldStyle(.roundedBorder)
+                HStack(spacing: 12) {
+                    Text("名称")
+                    TextField("", text: $rule.name, prompt: Text("规则名称"))
+                        .textFieldStyle(.roundedBorder).multilineTextAlignment(.leading).labelsHidden()
+                        .frame(maxWidth: .infinity)
+                }
                 Toggle("启用", isOn: $rule.enabled)
             }
 
@@ -340,23 +347,19 @@ private struct RuleEditor: View {
                         }
                     }
                 }
-                StringListEditor(title: "关键词", items: $rule.keywords, placeholder: "输入关键词，回车添加")
+                TokenListEditor(title: "关键词", items: $rule.keywords, placeholder: "输入关键词，回车添加")
                 Picker("命中方式", selection: $rule.requireAll) {
                     Text("出现任意一个关键词").tag(false)
                     Text("必须出现全部关键词").tag(true)
                 }
                 .pickerStyle(.segmented)
                 Toggle("把关键词当作正则表达式", isOn: $rule.regex)
-                StringListEditor(title: "发件人包含（可选）", items: $rule.from, placeholder: "例如 boss@company.com")
-                StringListEditor(title: "GitHub 通知原因（可选）", items: $rule.reasons, placeholder: "例如 review_requested、mention、assign")
-                Menu("常用 GitHub 原因") {
-                    ForEach(Self.knownReasons, id: \.0) { reason, label in
-                        Button("\(label)  (\(reason))") { if !rule.reasons.contains(reason) { rule.reasons.append(reason) } }
-                    }
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                StringListEditor(title: "排除词（可选）", items: $rule.exclude, placeholder: "出现这些词的邮件不算命中")
+                TokenListEditor(title: "发件人包含", optional: true, items: $rule.from, placeholder: "例如 boss@company.com")
+                // GitHub 通知原因：常用的做成可开关的标签，别的可以手填；它们是同一个列表，不再分成两处
+                TokenListEditor(title: "GitHub 通知原因", optional: true, hint: "只匹配带有这些原因的 GitHub 通知邮件（邮件头 X-GitHub-Reason）。",
+                                items: $rule.reasons, placeholder: "其他原因，例如 team_mention，回车添加",
+                                suggestions: Self.knownReasons.map { TokenListEditor.Suggestion(value: $0.0, label: $0.1) })
+                TokenListEditor(title: "排除词", optional: true, hint: "出现这些词的邮件不算命中。", items: $rule.exclude, placeholder: "输入排除词，回车添加")
             }
 
             Section("命中后") {
@@ -385,11 +388,17 @@ private struct RuleEditor: View {
                 if let preview {
                     Text("会命中 \(preview.matchCount) 封").fontWeight(.medium)
                     ForEach(preview.samples, id: \.id) { sample in
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(sample.subject.isEmpty ? "（无主题）" : sample.subject).lineLimit(1)
-                            Text(MailAddress.parse(sample.from).displayName + " · " + DateText.list(sample.date))
-                                .font(.caption).foregroundStyle(.secondary)
+                        Button { previewing = sample } label: {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(sample.subject.isEmpty ? "（无主题）" : sample.subject).lineLimit(1)
+                                Text(MailAddress.parse(sample.from).displayName + " · " + DateText.list(sample.date))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .help("点击预览这封邮件")
                     }
                 } else {
                     Text("—").foregroundStyle(.secondary)
@@ -404,42 +413,108 @@ private struct RuleEditor: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(item: Binding(get: { previewing.map { PreviewTarget(id: $0.id) } }, set: { if $0 == nil { previewing = nil } })) { target in
+            MessagePreviewSheet(messageId: target.id, service: service,
+                                caption: "规则「\(rule.name.isEmpty ? "未命名" : rule.name)」会命中这封邮件，看看对不对")
+        }
     }
 }
 
-/// 一组字符串（关键词、发件人、排除词）的编辑：每行可改可删，底部输入框回车添加。
-private struct StringListEditor: View {
+private struct PreviewTarget: Identifiable { let id: String }
+
+/// 一组字符串（关键词、发件人、GitHub 原因、排除词）的编辑：已有的显示成可删除的标签，底部一个输入框回车添加。
+/// 有「常用项」时（GitHub 原因），常用项做成可开关的标签，选中就是加进了列表；列表里不在常用项里的，显示成可删除的标签。
+/// 标题、说明、标签、输入框都在同一列里左对齐，输入框和按钮同高。
+struct TokenListEditor: View {
+    struct Suggestion: Hashable {
+        let value: String
+        let label: String
+    }
+
     let title: String
+    var optional = false
+    var hint: String?
     @Binding var items: [String]
     let placeholder: String
+    var suggestions: [Suggestion] = []
     @State private var draft = ""
 
+    private var custom: [String] { items.filter { item in !suggestions.contains { $0.value == item } } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-            ForEach(Array(items.indices), id: \.self) { index in
-                HStack {
-                    TextField("", text: Binding(
-                        get: { index < items.count ? items[index] : "" },
-                        set: { if index < items.count { items[index] = $0 } }))
-                        .textFieldStyle(.roundedBorder)
-                    Button {
-                        if index < items.count { items.remove(at: index) }
-                    } label: { Image(systemName: "minus.circle") }
-                        .buttonStyle(.borderless)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text(title)
+                if optional { Text("可选").font(.caption).foregroundStyle(.secondary) }
+            }
+            if let hint { Text(hint).font(.caption).foregroundStyle(.secondary) }
+
+            if !suggestions.isEmpty {
+                FlowLayout(spacing: 6, lineSpacing: 6) {
+                    ForEach(suggestions, id: \.self) { suggestion in
+                        let on = items.contains(suggestion.value)
+                        Button { toggle(suggestion.value) } label: {
+                            HStack(spacing: 4) {
+                                if on { Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)) }
+                                Text(suggestion.label)
+                            }
+                            .font(.callout)
+                            .padding(.horizontal, 9).padding(.vertical, 3)
+                            .foregroundStyle(on ? Color.white : Color.primary)
+                            .background(on ? Color.accentColor : Color.secondary.opacity(0.12), in: Capsule())
+                            .overlay(Capsule().stroke(Color.secondary.opacity(on ? 0 : 0.3), lineWidth: 0.5))
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help(suggestion.value)
+                        .accessibilityLabel(suggestion.label)
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
                 }
             }
-            HStack {
-                TextField(placeholder, text: $draft).textFieldStyle(.roundedBorder).onSubmit(add)
-                Button("添加", action: add).disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+
+            if !custom.isEmpty {
+                FlowLayout(spacing: 6, lineSpacing: 6) {
+                    ForEach(custom, id: \.self) { item in
+                        HStack(spacing: 5) {
+                            Text(item).lineLimit(1)
+                            Button { items.removeAll { $0 == item } } label: {
+                                Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).frame(width: 14, height: 14).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help("删除")
+                            .accessibilityLabel("删除 \(item)")
+                        }
+                        .font(.callout)
+                        .padding(.leading, 9).padding(.trailing, 5).padding(.vertical, 3)
+                        .background(Color.accentColor.opacity(0.14), in: Capsule())
+                        .overlay(Capsule().stroke(Color.accentColor.opacity(0.35), lineWidth: 0.5))
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                // 输入框占满整行、文字左对齐（Form 默认会把输入框推到右半边、文字右对齐）
+                TextField("", text: $draft, prompt: Text(placeholder))
+                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.leading).labelsHidden()
+                    .frame(maxWidth: .infinity)
+                    .onSubmit(add)
+                Button("添加", action: add)
+                    .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
+    }
+
+    private func toggle(_ value: String) {
+        if items.contains(value) { items.removeAll { $0 == value } } else { items.append(value) }
     }
 
     private func add() {
         let value = draft.trimmingCharacters(in: .whitespaces)
         guard !value.isEmpty else { return }
-        items.append(value)
+        if !items.contains(value) { items.append(value) }
         draft = ""
     }
 }

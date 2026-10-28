@@ -126,10 +126,11 @@ struct SidebarView: View {
                 Text(title).font(Theme.mono(10, .semibold)).tracking(1.6).foregroundStyle(Theme.faint)
                 Spacer()
                 if let action {
-                    Button(action: action.run) { Image(systemName: action.icon).font(.system(size: 10)) }
+                    Button(action: action.run) { Image(systemName: action.icon).font(.system(size: 10)).iconHitTarget(22) }
                         .buttonStyle(PlainPointerButtonStyle())
                         .foregroundStyle(Theme.faint)
                         .help(action.help)
+                        .accessibilityLabel(action.help)
                 }
             }
             .padding(.horizontal, 10)
@@ -278,16 +279,18 @@ struct SidebarView: View {
                 }
                 Spacer()
                 Button { service.manualSync() } label: {
-                    SyncIcon(syncing: service.syncing)
+                    SyncIcon(syncing: service.syncing).iconHitTarget()
                 }
                 .buttonStyle(PlainPointerButtonStyle())
                 .foregroundStyle(service.syncing ? Theme.accent : Theme.muted)
                 .pointerStyle(.link)
                 .help("立即收取邮件（⌘R）")
-                Button { service.openSettings?("general") } label: { Image(systemName: "gearshape") }
+                .accessibilityLabel(service.syncing ? "正在同步" : "立即收取邮件")
+                Button { service.openSettings?("general") } label: { Image(systemName: "gearshape").iconHitTarget() }
                     .buttonStyle(PlainPointerButtonStyle())
                     .foregroundStyle(Theme.muted)
                     .help("设置（⌘,）")
+                    .accessibilityLabel("设置")
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 8)

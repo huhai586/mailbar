@@ -84,7 +84,13 @@ final class MailService: ObservableObject {
     @Published private(set) var currentAccountID: String?
     /// 各账号收件箱的未读会话数（账号切换器里显示）
     @Published private(set) var accountUnread: [String: Int] = [:]
-    @Published var module: AppModule = .mail
+    @Published var module: AppModule = .mail {
+        didSet { if menuState.mailVisible != (module == .mail) { menuState.mailVisible = module == .mail } }
+    }
+    /// 菜单项的启用状态（由 RootView 随选中的会话更新）
+    @Published var menuState = MenuState()
+    /// 菜单栏命令的执行入口（由 RootView 登记，它持有列表和详情的状态）
+    var perform: ((AppCommand) -> Void)?
     /// 日历数据有变化时 +1
     @Published private(set) var calendarRevision = 0
     /// 添加账号的浏览器授权正在进行
@@ -439,7 +445,8 @@ final class MailService: ObservableObject {
 
     /// 标记已读 / 未读：本地立刻变化，随后同步到 Gmail；失败会回滚并在状态栏显示原因。
     /// session 默认是当前账号（界面里看的就是它的邮件）。
-    func setRead(_ read: Bool, messageIds: [String], in target: AccountSession? = nil) async {
+    /// registerUndo：用户亲手做的操作（按 m、右键菜单、一键清理）才登记到「编辑 > 撤销」；自动标已读不登记。
+    func setRead(_ read: Bool, messageIds: [String], in target: AccountSession? = nil, registerUndo: Bool = false) async {
         guard let session = target ?? session, !messageIds.isEmpty else {
             trace("[setRead] 跳过：session=%d ids=%d", (target ?? session) != nil, messageIds.count)
             return
@@ -450,11 +457,12 @@ final class MailService: ObservableObject {
         if UserDefaults.standard.bool(forKey: "noSync"), ProcessInfo.processInfo.environment["MAIL_FAKE_REMOTE"] == nil { return }
         #endif
         do {
-            try await session.actions.setRead(read, messageIds: messageIds, onLocalChange: { [weak self] in
+            let changed = try await session.actions.setRead(read, messageIds: messageIds, onLocalChange: { [weak self] in
                 Task { @MainActor in self?.bump() }
             })
             session.lastError = nil
             trace("[setRead] 完成")
+            if registerUndo, !changed.isEmpty { registerReadUndo(changed, read: read, session: session) }
         } catch MailError.reauthorizationRequired {
             session.canModify = false
             Pref.setCachedFlag(Pref.canModifyCache, account: session.id, false)
@@ -465,6 +473,19 @@ final class MailService: ObservableObject {
             trace("[setRead] 失败：%@", error.localizedDescription)
             session.lastError = "标记失败：\(error.localizedDescription)"
         }
+    }
+
+    /// 窗口的撤销管理器（由 RootView 登记）：「编辑 > 撤销 / 重做」走它，和输入框里的文字撤销互不干扰。
+    var undoManager: UndoManager?
+
+    /// 登记「标为已读 / 未读」的撤销。撤销时做相反的操作；相反操作的撤销在回调里同步登记，系统才会把它当成「重做」。
+    private func registerReadUndo(_ ids: [String], read: Bool, session: AccountSession) {
+        guard let undoManager else { return }
+        undoManager.registerUndo(withTarget: self) { service in
+            service.registerReadUndo(ids, read: !read, session: session)
+            Task { @MainActor in await service.setRead(!read, messageIds: ids, in: session) }
+        }
+        if !undoManager.isUndoing { undoManager.setActionName(read ? "标为已读" : "标为未读") }
     }
 
     /// 再往前拉 count 封历史邮件。

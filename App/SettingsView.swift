@@ -61,12 +61,18 @@ private struct GeneralSettingsView: View {
         Form {
             Section("外观") {
                 Picker("主题", selection: $appearance) {
-                    Text("终端（深色）").tag("dark")
-                    Text("纸质（浅色）").tag("light")
-                    Text("夜间（暗黑模式）").tag("night")
-                    Text("日间（明亮模式）").tag("day")
-                    Text("跟随系统").tag("system")
+                    Text("跟随系统（终端 / 纸质）").tag("system")
+                    Section("Sift") {
+                        ForEach(Palette.builtIn) { Text($0.title).tag($0.id) }
+                    }
+                    Section("参考 VS Code 自带主题") {
+                        ForEach(Palette.vscodeInspired) { Text($0.title).tag($0.id) }
+                    }
                 }
+                if let palette = Palette.named(appearance) {
+                    ThemeSwatch(palette: palette)
+                }
+                Text("参考 VS Code 的配色风格；文字和强调色会自动调到足够的对比度，所以和 VS Code 里的并不完全一致。").font(.caption).foregroundStyle(.secondary)
                 Picker("界面密度", selection: $density) {
                     Text("紧凑").tag("compact")
                     Text("标准").tag("standard")
@@ -355,6 +361,18 @@ private struct AccountSettingsView: View {
     private var currentDBPath: String { service.session?.account.dbPath ?? MailStore.defaultPath() }
     private var localCount: Int { (try? service.store?.messageCount()) ?? 0 }
 
+    /// 标题和按钮在一行，路径在下面单独一行（可选中复制），不再和按钮挤在一起被截断。
+    private func fileRow(_ title: String, path: String, button: String, action: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(title)
+                Spacer()
+                Button(button, action: action)
+            }
+            Text(path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+        }
+    }
+
     private func accountRow(_ account: Account) -> some View {
         let session = service.sessions[account.id]
         return VStack(alignment: .leading, spacing: 4) {
@@ -451,20 +469,10 @@ private struct AccountSettingsView: View {
             }
 
             Section("文件") {
-                LabeledContent("数据库") {
-                    HStack {
-                        Text(currentDBPath).font(.caption).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
-                        Button("在 Finder 中显示") {
-                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: currentDBPath)])
-                        }
-                    }
+                fileRow("数据库", path: currentDBPath, button: "在 Finder 中显示") {
+                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: currentDBPath)])
                 }
-                LabeledContent("规则文件") {
-                    HStack {
-                        Text(RuleStore.defaultPath()).font(.caption).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
-                        Button("用文本编辑器打开") { openRulesFile() }
-                    }
-                }
+                fileRow("规则文件", path: RuleStore.defaultPath(), button: "用文本编辑器打开") { openRulesFile() }
             }
         }
         .formStyle(.grouped)
@@ -516,20 +524,23 @@ private struct KindSettingsView: View {
                 ForEach($config.overrides) { $item in
                     HStack(spacing: 8) {
                         Toggle("", isOn: $item.enabled).labelsHidden()
+                        // 「发件人 / 主题 / 正文 + 包含 / 匹配」合成一个选择器，省出一列宽度给输入框
                         Picker("", selection: $item.field) {
-                            Text("发件人").tag(KindConfig.Override.Field.sender)
-                            Text("主题").tag(KindConfig.Override.Field.subject)
-                            Text("正文").tag(KindConfig.Override.Field.body)
-                        }.labelsHidden().frame(width: 80)
-                        Text(item.regex ? "匹配" : "包含").foregroundStyle(.secondary).font(.caption)
-                        TextField("", text: $item.pattern, prompt: Text("文字")).labelsHidden().textFieldStyle(.roundedBorder).font(.system(.body, design: .monospaced))
-                        Toggle("正则", isOn: $item.regex).toggleStyle(.checkbox).font(.caption)
-                        Text("→").foregroundStyle(.secondary)
+                            Text(item.regex ? "发件人匹配" : "发件人包含").tag(KindConfig.Override.Field.sender)
+                            Text(item.regex ? "主题匹配" : "主题包含").tag(KindConfig.Override.Field.subject)
+                            Text(item.regex ? "正文匹配" : "正文包含").tag(KindConfig.Override.Field.body)
+                        }.labelsHidden().frame(width: 110)
+                        TextField("", text: $item.pattern, prompt: Text("文字")).labelsHidden().textFieldStyle(.roundedBorder)
+                            .multilineTextAlignment(.leading).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity)
+                        Toggle("正则", isOn: $item.regex).toggleStyle(.checkbox).font(.caption).fixedSize()
+                        Image(systemName: "arrow.right").foregroundStyle(.secondary).font(.caption)
                         Picker("", selection: $item.kind) {
                             ForEach(Self.kinds, id: \.0) { Text($0.1).tag($0.0.rawValue) }
                         }.labelsHidden().frame(width: 130)
-                        Button { config.overrides.removeAll { $0.id == item.id } } label: { Image(systemName: "minus.circle") }
-                            .buttonStyle(PlainPointerButtonStyle()).foregroundStyle(.secondary).help("删除这条规则")
+                        Button { config.overrides.removeAll { $0.id == item.id } } label: {
+                            Image(systemName: "minus.circle").iconHitTarget()
+                        }
+                        .buttonStyle(PlainPointerButtonStyle()).foregroundStyle(.secondary).help("删除这条规则").accessibilityLabel("删除这条规则")
                     }
                 }
                 Button { config.overrides.insert(.init(), at: 0) } label: { Label("添加覆盖规则", systemImage: "plus") }
@@ -538,10 +549,7 @@ private struct KindSettingsView: View {
             }
 
             Section {
-                TextField("每个词用逗号分隔", text: Binding(
-                    get: { config.botSenders.joined(separator: ", ") },
-                    set: { config.botSenders = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }))
-                    .textFieldStyle(.roundedBorder).font(.system(.body, design: .monospaced))
+                TokenListEditor(title: "机器人账号名里含有", items: $config.botSenders, placeholder: "输入名字里的词，回车添加，比如 [bot]")
                 Text("发件人名字里含这些词的，当作机器人账号，再按内容分成例行 / 出问题 / 其他。GitHub 的机器人账号通常带 [bot]；有的服务账号不带，比如 CI 报告专用的账号，把它的名字加进来。")
                     .font(.caption).foregroundStyle(.secondary)
             } header: {
@@ -588,9 +596,18 @@ private struct KindSettingsView: View {
     private func patternField(_ title: String, _ value: Binding<String>, _ help: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-            TextField("", text: value).textFieldStyle(.roundedBorder).font(.system(.caption, design: .monospaced))
+            // 正则很长：用可换行的多行输入框，整条都能看到（以前是单行，右半截被截掉）
+            TextEditor(text: value)
+                .font(.system(.caption, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .padding(4)
+                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 90)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5))
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.3), lineWidth: 0.5))
+                .accessibilityLabel(title)
             Text(help).font(.caption).foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -614,5 +631,38 @@ private struct SettingsWindowConfigurator: NSViewRepresentable {
         window.identifier = identifier
         window.level = .floating
         window.hidesOnDeactivate = true
+    }
+}
+
+
+/// 设置里主题旁边的色块预览：背景、面板、文字和几个语义色。
+private struct ThemeSwatch: View {
+    let palette: Palette
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach([palette.bg, palette.panel, palette.raised], id: \.self) { color in
+                Rectangle().fill(Color(hex: color)).frame(width: 34, height: 26)
+            }
+            HStack(spacing: 6) {
+                Text("Aa").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color(hex: palette.text))
+                Text("Aa").font(.system(size: 13)).foregroundStyle(Color(hex: palette.muted))
+                ForEach([palette.accent, palette.red, palette.orange, palette.green, palette.blue, palette.purple], id: \.self) { color in
+                    Circle().fill(Color(hex: color)).frame(width: 9, height: 9)
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(Color(hex: palette.bg))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.35), lineWidth: 0.5))
+        .accessibilityHidden(true)
+    }
+}
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(.sRGB, red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255, opacity: 1)
     }
 }

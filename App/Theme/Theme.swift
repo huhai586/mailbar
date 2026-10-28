@@ -9,54 +9,56 @@ enum Theme {
                 blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
     }
 
-    /// 「夜间 / 日间」主题用蓝色系配色；其余（终端 / 纸质 / 跟随系统）用暖色系。
-    static var isDayNight: Bool {
-        let value = UserDefaults.standard.string(forKey: Pref.appearance)
-        return value == "night" || value == "day"
+    /// 系统设置里开了「增强对比度」：次要文字、分隔线用更强的变体（Palette 里的 *Contrast 颜色）。
+    private static var increasedContrast: Bool { NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast }
+
+    /// 当前主题。设置里选了具体主题就用它；选「跟随系统」时按系统的明暗取终端（深）或纸质（浅）。
+    static func palette(systemDark: Bool) -> Palette {
+        Palette.resolve(id: UserDefaults.standard.string(forKey: Pref.appearance), systemDark: systemDark)
     }
 
-    private static func dynamic(_ dark: UInt32, _ light: UInt32, night: UInt32? = nil, day: UInt32? = nil, alpha: CGFloat = 1) -> Color {
+    /// 从当前主题里取一个颜色。颜色在每次绘制时才解析，所以主题一换（RootView 用主题标识当 id 重建界面）立刻生效。
+    /// contrast：增强对比度时改取的那一个颜色。
+    private static func token(_ color: KeyPath<Palette, UInt32>, alpha: CGFloat = 1, contrast: KeyPath<Palette, UInt32>? = nil) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let useAlt = isDayNight
-            let hex = isDark ? (useAlt ? night ?? dark : dark) : (useAlt ? day ?? light : light)
-            return ns(hex, alpha: alpha)
+            let p = palette(systemDark: isDark)
+            let key = (contrast != nil && increasedContrast) ? contrast! : color
+            return ns(p[keyPath: key], alpha: alpha)
         })
     }
 
-    // 两套主题：深色 = 「终端控制台」（暖黑底 + 琥珀招牌色），浅色 = 「纸质」（暖白纸 + 深绿墨色）。
+    // 所有颜色都来自 Palette（MailCore/Palette.swift）：一个主题一份调色板，文字对比度由测试保证。
     // 颜色只为"有含义的事"服务：accent = 需要你；red = 出问题；其余都收成灰。
     // 表面
-    static let bg = dynamic(0x16130F, 0xFAF7F1, night: 0x0B1020, day: 0xF7F9FC)
-    static let panel = dynamic(0x1D1912, 0xF3EFE6, night: 0x111833, day: 0xEEF2F8)
-    static let raised = dynamic(0x2A251D, 0xE9E3D6, night: 0x1B2444, day: 0xE3E9F3)
-    static let border = dynamic(0x332D22, 0xE0D9CB, night: 0x252F52, day: 0xD5DCE8)
-    static let hover = dynamic(0xFFF1D6, 0x000000, night: 0xFFFFFF, day: 0x000000, alpha: 0.04)
-    static let selection = dynamic(0xF5A524, 0x2F5D46, night: 0x5B9DFF, day: 0x1F6FEB, alpha: 0.16)
+    static let bg = token(\.bg)
+    static let panel = token(\.panel)
+    static let raised = token(\.raised)
+    static let border = token(\.border, contrast: \.borderContrast)
+    static let hover = token(\.hover, alpha: 0.045)
+    static let selection = token(\.accent, alpha: 0.16)
 
-    // 未读行的底色：按「普通 / 待处理 / 出问题」三档，四个主题（终端 / 纸质 / 夜间 / 日间）各自一套，都是在该主题的底色上
-    // 轻微偏一点色调，不透明，亮度只比背景高（深色）或低（浅色）一点点；色调跟着各主题的强调色走（琥珀 / 墨绿 / 蓝），红色档统一偏红。
-    //                         终端(深)  纸质(浅)  夜间(深)  日间(浅)
-    static let unreadFill     = dynamic(0x241F17, 0xF0EBDD, night: 0x121A38, day: 0xEBF0F8)
-    static let unreadAttention = dynamic(0x30271A, 0xE4EADB, night: 0x15244F, day: 0xDDE9FA)
-    static let unreadAlert    = dynamic(0x35201A, 0xF5E3DB, night: 0x2C1A2C, day: 0xFBE5E6)
+    // 未读行的底色：普通 / 待处理 / 出问题
+    static let unreadFill = token(\.unreadFill)
+    static let unreadAttention = token(\.unreadAttention)
+    static let unreadAlert = token(\.unreadAlert)
 
-    // 文字
-    static let text = dynamic(0xE9E3D6, 0x1F1D19, night: 0xDDE4F5, day: 0x1B2333)
-    static let muted = dynamic(0x8A8273, 0x6B665A, night: 0x8190B5, day: 0x5B6780)
-    static let faint = dynamic(0x6F6858, 0x8B8577, night: 0x626F94, day: 0x8190A8)
+    // 文字：text ≥ 7:1，muted ≥ 7:1，faint ≥ 4.5:1（苹果建议正文至少 4.5:1）；增强对比度时 muted 再加强，faint 提到 muted 的水平。
+    static let text = token(\.text)
+    static let muted = token(\.muted, contrast: \.mutedContrast)
+    static let faint = token(\.faint, contrast: \.faintContrast)
 
     // 语义色
-    static let accent = dynamic(0xF5A524, 0x2F5D46, night: 0x5B9DFF, day: 0x1F6FEB)
-    static let red = dynamic(0xFF5F4A, 0xB3402A, night: 0xFF6B7A, day: 0xD1383D)
-    static let orange = dynamic(0xE8803A, 0xB5651D, night: 0xFFA05A, day: 0xC2620F)
-    static let yellow = dynamic(0xD9B44A, 0x8F6B12, night: 0xE6C65C, day: 0x9A6B00)
-    static let green = dynamic(0x7FB069, 0x4A7A3A, night: 0x5FCB8C, day: 0x1F8A4C)
-    static let cyan = dynamic(0x5FB3A8, 0x2D7A78, night: 0x4FD1E0, day: 0x0E7C86)
-    static let blue = dynamic(0x7AA2C8, 0x3B6A8F, night: 0x6FA8FF, day: 0x2563C9)
-    static let purple = dynamic(0xB59AE0, 0x6B4FA0, night: 0xA78BFA, day: 0x6E4BC2)
-    static let pink = dynamic(0xE58AB0, 0xA83E6B, night: 0xF27CB0, day: 0xB83280)
-    static let gray = dynamic(0x8A8273, 0x7A756A, night: 0x8190B5, day: 0x6B778C)
+    static let accent = token(\.accent)
+    static let red = token(\.red)
+    static let orange = token(\.orange)
+    static let yellow = token(\.yellow)
+    static let green = token(\.green)
+    static let cyan = token(\.cyan)
+    static let blue = token(\.blue)
+    static let purple = token(\.purple)
+    static let pink = token(\.pink)
+    static let gray = token(\.gray)
 
     /// 账号的识别色（和 AccountRegistry.paletteSize 个数一致）：账号切换器、日历里的日程都用它区分账号。
     static var accountColors: [Color] { [blue, green, orange, purple, pink, cyan, yellow, red] }
@@ -121,24 +123,24 @@ enum Theme {
     static var fontSet: FontSet { FontSet(rawValue: UserDefaults.standard.string(forKey: Pref.fontSet) ?? "") ?? .jetbrains }
 
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        fontSet.mono(max(9, size + fontOffset), weight)
+        fontSet.mono(max(10, size + fontOffset), weight)
     }
 
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        fontSet.sans(max(9, size + fontOffset), weight)
+        fontSet.sans(max(10, size + fontOffset), weight)
     }
 
     /// 标题字体：跟随字体套装的正文字体，深色 / 浅色主题一样（字体设置全局统一）。
     static func title(_ size: CGFloat, _ weight: Font.Weight = .regular, scheme: ColorScheme) -> Font {
-        fontSet.sans(max(9, size + fontOffset), weight)
+        fontSet.sans(max(10, size + fontOffset), weight)
     }
 
     static let radius: CGFloat = 6
 }
 
 extension View {
-    /// 设置里的主题：终端（深）/ 纸质（浅）/ 夜间（深）/ 日间（浅）/ 跟随系统。
+    /// 设置里的主题：每个主题自己知道是深色还是浅色；「跟随系统」不强制。
     func applyAppearance(_ value: String) -> some View {
-        preferredColorScheme(["dark", "night"].contains(value) ? .dark : (["light", "day"].contains(value) ? .light : nil))
+        preferredColorScheme(Palette.named(value).map { $0.isDark ? .dark : .light })
     }
 }

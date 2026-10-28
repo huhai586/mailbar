@@ -24,11 +24,14 @@ public final class MailActions: Sendable {
     /// - 成功：清掉待发送记录；
     /// - Gmail 明确拒绝（授权不够、请求无效）：恢复原状态并抛错；
     /// - 网络问题等临时失败：保留本地状态和待发送记录，下次同步前由 flushPending() 重发，不抛错。
-    public func setRead(_ read: Bool, messageIds: [String], onLocalChange: (@Sendable () -> Void)? = nil) async throws {
+    /// 返回真正改变了状态的邮件 id（已经是目标状态的不算）——撤销时只恢复这些。
+    @discardableResult
+    public func setRead(_ read: Bool, messageIds: [String], onLocalChange: (@Sendable () -> Void)? = nil) async throws -> [String] {
         let changed = try store.applyLocalRead(messageIds, read: read)
-        guard !changed.isEmpty else { return }
+        guard !changed.isEmpty else { return [] }
         onLocalChange?()
         try await push(changed, read: read)
+        return changed
     }
 
     /// 重发还没被 Gmail 确认的改动（上次网络失败、或者请求发出前应用退出了）。

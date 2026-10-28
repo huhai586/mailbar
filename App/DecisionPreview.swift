@@ -69,3 +69,40 @@ struct DecisionPreview: View {
         .help(value > 0 ? "判断对了" : "判断错了")
     }
 }
+
+/// 设置里点开一封邮件的预览（试匹配的样例等）：顶部一句说明，下面是邮件原文。
+struct MessagePreviewSheet: View {
+    let messageId: String
+    @ObservedObject var service: MailService
+    let caption: String
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(Pref.appearance) private var appearance = "dark"
+    @State private var message: MessageDetail?
+    @State private var expanded = true
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(caption).font(Theme.ui(12.5)).foregroundStyle(Theme.text)
+                Spacer()
+                Button("关闭") { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+            .padding(12)
+            .background(Theme.panel)
+            Rectangle().fill(Theme.border).frame(height: 1)
+            ScrollView {
+                if let message {
+                    MessageCard(message: message, info: NotificationClassifier.classify(subject: message.subject, from: message.from, reason: message.reason, body: String(message.snippet.prefix(600))),
+                                githubLogin: nil, expanded: $expanded)
+                        .padding(12)
+                } else {
+                    Text("这封邮件已经不在本地了").font(Theme.ui(12.5)).foregroundStyle(Theme.faint).padding(.top, 40)
+                }
+            }
+        }
+        .frame(width: 760, height: 620)
+        .background(Theme.bg)
+        .applyAppearance(appearance)
+        .onAppear { message = try? service.store?.message(id: messageId) }
+    }
+}

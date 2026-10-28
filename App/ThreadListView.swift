@@ -29,6 +29,7 @@ struct ThreadListView: View {
     private var header: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
+                SidebarToggleButton()
                 Text(title).font(Theme.ui(15, .bold)).foregroundStyle(Theme.text).lineLimit(1)
                 Text(reader.threads.isEmpty ? "" : "\(reader.threads.count)\(reader.hasMore ? "+" : "")")
                     .font(Theme.mono(11)).foregroundStyle(Theme.faint)
@@ -36,12 +37,13 @@ struct ThreadListView: View {
                 groupToggle
                 filterToggle
                 Button { service.manualSync() } label: {
-                    SyncIcon(syncing: service.syncing).font(.system(size: 12))
+                    SyncIcon(syncing: service.syncing).font(.system(size: 12)).iconHitTarget()
                 }
                 .buttonStyle(PlainPointerButtonStyle())
                 .foregroundStyle(Theme.muted)
                 .pointerStyle(.link)
                 .help("立即收取邮件（⌘R）")
+                .accessibilityLabel("立即收取邮件")
             }
             sourceTabs
             HStack(spacing: 6) {
@@ -487,6 +489,21 @@ private struct ThreadRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .pointerStyle(.link)
+        // VoiceOver：一行读成一句话（未读、标题、谁、内容开头、时间），而不是把每个小控件逐个读一遍
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenSummary(title: title))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func spokenSummary(title: String) -> String {
+        var parts: [String] = []
+        if thread.isUnread { parts.append(unread ? "未读" : "未读（仅例行消息）") }
+        parts.append(title.isEmpty ? "无主题" : title)
+        parts.append(actor)
+        if !thread.preview.isEmpty { parts.append(thread.preview) }
+        if thread.humanCount > 0 { parts.append("\(thread.humanCount) 条真人评论") }
+        parts.append(DateText.updated(thread.date))
+        return parts.joined(separator: "，")
     }
 
     /// 谁、在哪：发件人 · 仓库 #PR · Jira 编号。全是安静的灰色小字，不再是一堆药丸。
@@ -519,6 +536,9 @@ private struct DayHeader: View {
         .padding(.bottom, Theme.pad(6))
         .frame(maxWidth: .infinity)
         .background(Theme.bg)     // 吸顶时盖住下面滚过去的行，必须不透明
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(unread > 0 ? "\(title)，\(count) 个会话，\(unread) 个未读" : "\(title)，\(count) 个会话")
+        .accessibilityAddTraits(.isHeader)
     }
 }
 

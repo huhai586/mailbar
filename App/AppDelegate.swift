@@ -71,6 +71,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let group = UserDefaults.standard.string(forKey: "demoNotifyClick") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.showMainWindow(mailbox: .allMail, threadId: group) }
         }
+        // 调试用：`--args -dumpMenus YES` 启动 4 秒后把主菜单栏的全部菜单项写进诊断日志
+        if UserDefaults.standard.bool(forKey: "dumpMenus") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                func dump(_ menu: NSMenu, _ indent: String) {
+                    for item in menu.items where !item.isSeparatorItem {
+                        trace("[Menu] %@%@  %@", indent, item.title, item.keyEquivalent.isEmpty ? "" : "⌘\(item.keyEquivalent)")
+                        if let sub = item.submenu { dump(sub, indent + "  ") }
+                    }
+                }
+                if let main = NSApp.mainMenu { dump(main, "") } else { trace("[Menu] mainMenu = nil") }
+            }
+        }
         // 调试用：`--args -demoToast YES` 启动后弹一张通知卡片，方便截图检查样式
         if UserDefaults.standard.bool(forKey: "demoToast") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in

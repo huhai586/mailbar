@@ -2,21 +2,62 @@ import AppKit
 import MailCore
 import SwiftUI
 
+/// 系统「增强对比度」的开关状态。Theme 的颜色在绘制时读它；它变了要让整个界面重新取一遍颜色（见 RootView 的 .id）。
+@MainActor
+final class DisplayOptions: ObservableObject {
+    @Published private(set) var increaseContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+    private var observer: NSObjectProtocol?
+
+    init() {
+        observer = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.increaseContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast }
+        }
+    }
+
+    deinit { if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) } }
+}
+
 struct RootView: View {
     @ObservedObject var service: MailService
     @StateObject private var reader: ReaderModel
     @StateObject private var calendarModel: CalendarModel
+    @StateObject private var display = DisplayOptions()
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @AppStorage(Pref.appearance) private var appearance = "dark"
     @AppStorage(Pref.fontOffset) private var fontOffset = 0.0
     @AppStorage(Pref.uiDensity) private var uiDensity = "standard"
     @AppStorage(Pref.fontSet) private var fontSet = "jetbrains"
+    @AppStorage(Pref.sidebarVisible) private var sidebarVisible = true
+    @Environment(\.undoManager) private var undoManager
 
     init(service: MailService) {
         self.service = service
         _reader = StateObject(wrappedValue: ReaderModel(service: service))
         _calendarModel = StateObject(wrappedValue: CalendarModel(service: service))
+    }
+
+    /// 菜单栏命令：这里持有列表和详情的状态，由它来执行。
+    private func performCommand(_ command: AppCommand) {
+        switch command {
+        case .toggleRead: if let id = reader.selectedThreadID { reader.toggleRead(threadId: id) }
+        case .previousThread: reader.moveSelection(by: -1)
+        case .nextThread: reader.moveSelection(by: 1)
+        case .focusSearch: service.module = .mail; reader.focusSearchTick += 1
+        case .toggleUnreadOnly: reader.unreadOnly.toggle()
+        case .openInService: if let link = reader.serviceLink() { NSWorkspace.shared.open(link.url) }
+        case .openInGmail:
+            NSWorkspace.shared.open(gmailURL(threadId: reader.selectedThread?.latestThreadId ?? reader.selectedThreadID, account: service.accountEmail))
+        case .commandPalette: service.module = .mail; reader.showPalette.toggle()
+        }
+    }
+
+    private func updateMenuState() {
+        let state = MenuState(hasSelection: reader.selectedThreadID != nil, hasUnread: reader.selectedThreadHasUnread,
+                              hasServiceLink: reader.selectedThreadID != nil && reader.serviceLink() != nil,
+                              mailVisible: service.module == .mail)
+        if state != service.menuState { service.menuState = state }
     }
 
     var body: some View {
@@ -26,8 +67,10 @@ struct RootView: View {
             } else {
                 // 侧栏始终在；选了「日历」时中间和右边两栏换成日历（日程列表 + 日 / 周 / 月视图）
                 HSplitView {
-                    SidebarView(reader: reader, service: service)
-                        .frame(minWidth: 190, idealWidth: 218, maxWidth: 300, maxHeight: .infinity)
+                    if sidebarVisible {
+                        SidebarView(reader: reader, service: service)
+                            .frame(minWidth: 190, idealWidth: 218, maxWidth: 300, maxHeight: .infinity)
+                    }
                     if service.module == .calendar {
                         CalendarAgenda(model: calendarModel, service: service)
                             .frame(minWidth: 300, idealWidth: 340, maxWidth: 460, maxHeight: .infinity)
@@ -43,7 +86,7 @@ struct RootView: View {
             }
             StatusBar(service: service, reader: reader)
         }
-        .id("\(fontOffset)|\(uiDensity)|\(fontSet)|\(appearance)")   // 字号 / 密度一变就整体重建，所有 Theme.ui / pad 重新取值
+        .id("\(fontOffset)|\(uiDensity)|\(fontSet)|\(appearance)|\(display.increaseContrast)")   // 字号 / 密度一变就整体重建，所有 Theme.ui / pad 重新取值
         .background(Theme.bg)
         .overlay {
             if reader.showPalette {
@@ -51,29 +94,23 @@ struct RootView: View {
             }
         }
         .background(WindowConfigurator())
-        .background(shortcutButtons)
         .applyAppearance(appearance)
         .frame(minWidth: 1020, minHeight: 600)
+        .onChange(of: undoManager) { service.undoManager = undoManager }
+        .onChange(of: reader.selectedThreadID) { updateMenuState() }
+        .onChange(of: reader.messages) { updateMenuState() }
         .onAppear {
             // 菜单栏的"打开邮件窗口"靠它在窗口被关闭后重新打开
             service.openMainWindow = { openWindow(id: "main") }
             service.openSettingsWindow = { openSettings() }
+            service.undoManager = undoManager
+            service.perform = { command in performCommand(command) }
+            updateMenuState()
             #if DEBUG
             // 调试用：`--args -openPalette YES` 启动后直接展开命令面板，方便截图检查
             if UserDefaults.standard.bool(forKey: "openPalette") { reader.showPalette = true }
             #endif
         }
-    }
-
-    /// 不可见的按钮，只为了挂全局快捷键。
-    private var shortcutButtons: some View {
-        ZStack {
-            Button("") { reader.showPalette.toggle() }.keyboardShortcut("k", modifiers: .command)
-            Button("") { reader.focusSearchTick += 1 }.keyboardShortcut("f", modifiers: .command)
-            Button("") { service.manualSync() }.keyboardShortcut("r", modifiers: .command)
-        }
-        .opacity(0)
-        .frame(width: 0, height: 0)
     }
 }
 
@@ -90,7 +127,7 @@ private struct StatusBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Circle().fill(dotColor).frame(width: 7, height: 7)
+            Circle().fill(dotColor).frame(width: 7, height: 7).accessibilityHidden(true)   // 状态已经写在旁边的文字里
             Text(service.statusLine).font(Theme.mono(10.5)).foregroundStyle(Theme.muted).lineLimit(1)
             Spacer()
             Text("未读 \(reader.stats.inboxUnread)").font(Theme.mono(10.5)).foregroundStyle(Theme.muted)
