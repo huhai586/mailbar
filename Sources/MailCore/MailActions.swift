@@ -14,6 +14,11 @@ public final class MailActions: Sendable {
         self.init(api: GmailClient(oauth: oauth), store: store)
     }
 
+    /// 只改本地、不碰 Gmail：排查界面问题时在邮件库的副本上复现用（App 里由 MAIL_FAKE_REMOTE 开启）。
+    public convenience init(localOnlyStore store: MailStore) {
+        self.init(api: LocalOnlyGmail(), store: store)
+    }
+
     /// 把这些邮件标为已读（read = true）或未读。已经是目标状态的会被跳过；全部跳过时不发请求。
     /// onLocalChange 在本地状态改完、请求 Gmail 之前调用，界面可以据此立刻刷新。
     public func setRead(_ read: Bool, messageIds: [String], onLocalChange: (@Sendable () -> Void)? = nil) async throws {
@@ -41,4 +46,14 @@ public final class MailActions: Sendable {
             throw error
         }
     }
+}
+
+private struct LocalOnlyGmail: GmailAPI {
+    func profile() async throws -> GmailProfile { throw MailError.loginRequired }
+    func labels() async throws -> [GmailLabel] { throw MailError.loginRequired }
+    func listMessageIDs(limit: Int) async throws -> [String] { throw MailError.loginRequired }
+    func message(id: String) async throws -> GmailMessage? { throw MailError.loginRequired }
+    func history(since startHistoryId: String) async throws -> (records: [HistoryRecord], historyId: String?) { throw MailError.loginRequired }
+    func batchModify(ids: [String], addLabelIds: [String], removeLabelIds: [String]) async throws {}
+    func reasonHeader(id: String) async throws -> String? { throw MailError.loginRequired }
 }

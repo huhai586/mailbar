@@ -103,6 +103,13 @@ final class MailService: ObservableObject {
             monitor = MailMonitor(oauth: oauth, store: store, initialLimit: Pref.initialLimit)
             actions = MailActions(oauth: oauth, store: store)
             canModify = UserDefaults.standard.bool(forKey: Pref.canModifyCache)
+            #if DEBUG
+            // 排查用：在邮件库副本上只改本地、不碰 Gmail（配合 MAIL_DB 指向副本）
+            if ProcessInfo.processInfo.environment["MAIL_FAKE_REMOTE"] != nil {
+                actions = MailActions(localOnlyStore: store)
+                canModify = true
+            }
+            #endif
             setupError = nil
         } catch {
             setupError = error.localizedDescription
@@ -226,7 +233,7 @@ final class MailService: ObservableObject {
         trace("[setRead] read=%d ids=%d", read, messageIds.count)
         #if DEBUG
         // 调试的"不同步"模式不能碰邮箱：不改本地、也不向 Gmail 发任何请求
-        if UserDefaults.standard.bool(forKey: "noSync") { return }
+        if UserDefaults.standard.bool(forKey: "noSync"), ProcessInfo.processInfo.environment["MAIL_FAKE_REMOTE"] == nil { return }
         #endif
         do {
             try await actions.setRead(read, messageIds: messageIds, onLocalChange: { [weak self] in

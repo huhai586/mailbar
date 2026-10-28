@@ -44,20 +44,6 @@ final class ReaderModel: ObservableObject {
         var humanUnread = 0
     }
 
-    /// 列表里的一个分段：来源 + 分诊层级（需要处理 / 有新动态 / 仅机器人更新 / 其余）。
-    struct ListSection: Identifiable {
-        let id: String
-        let title: String
-        let icon: String
-        let colorName: String
-        let threads: [ThreadSummary]
-        /// 默认折叠（只有例行机器人更新的 PR）
-        let collapsedByDefault: Bool
-        /// 这一段里有一键清理
-        let cleanable: Bool
-        var unread: Int { threads.filter(\.isUnread).count }
-    }
-
     @Published var mailbox: Mailbox = .allMail
     @Published var searchText = ""
     @Published var unreadOnly = false
@@ -67,8 +53,6 @@ final class ReaderModel: ObservableObject {
     @Published private(set) var sourceCounts: [String: SourceCount] = [:]
     /// 收件箱里各来源的分组数（侧栏"来源"）
     @Published private(set) var inboxSourceCounts: [String: SourceCount] = [:]
-    /// 用户手动展开 / 折叠过的分段；没出现在这里的按 collapsedByDefault
-    @Published var sectionOverrides: [String: Bool] = [:]
     /// 按 PR 聚合：同一个 PR 的评论、CI 结果、Jira 联动合成一行（默认开）
     @Published var groupByPR = UserDefaults.standard.object(forKey: Pref.groupByPR) as? Bool ?? true
     @Published var selectedThreadID: String?
@@ -220,6 +204,7 @@ final class ReaderModel: ObservableObject {
             let top = try store.threads(in: .attention, groupByPR: true, limit: 8)
             if top != dashboard { dashboard = top }
         } catch {
+            trace("[ReloadAll] 出错：%@", error.localizedDescription)
             errorText = error.localizedDescription
         }
         reloadThreads(resetPaging: false)
@@ -249,9 +234,15 @@ final class ReaderModel: ObservableObject {
             sourceCounts = try store.sourceCounts(in: mailbox, search: searchText, groupByPR: groupByPR)
             hasMore = rows.count > limit
             let page = Array(rows.prefix(limit))
-            if page != threads { threads = page }
+            let changed = page != threads
+            if let id = selectedThreadID {
+                trace("[Reload] 行=%d 有变化=%d 选中=%@ 库里未读=%d 界面未读=%d", page.count, changed, id,
+                      page.first { $0.id == id }?.unreadCount ?? -1, threads.first { $0.id == id }?.unreadCount ?? -1)
+            }
+            if changed { threads = page }
             errorText = nil
         } catch {
+            trace("[Reload] 出错：%@", error.localizedDescription)
             errorText = error.localizedDescription
         }
         #if DEBUG
@@ -306,49 +297,11 @@ final class ReaderModel: ObservableObject {
         sourceFilter = source
     }
 
-    // MARK: - Sections (triage)
+    // MARK: - List order
 
-    /// 把列表分成：来源 × 分诊层级。GitHub 按"需要处理 / 有新动态 / 仅机器人更新 / 其余"分层，其他来源各一段。
-    var sections: [ListSection] {
-        if mailbox == .attention {
-            return threads.isEmpty ? [] : [ListSection(id: "attention", title: "待处理", icon: "exclamationmark.bubble.fill", colorName: "orange",
-                                                     threads: threads, collapsedByDefault: false, cleanable: false)]
-        }
-        var result: [ListSection] = []
-        func add(_ id: String, _ title: String, _ icon: String, _ color: String, _ rows: [ThreadSummary], collapsed: Bool = false, cleanable: Bool = false) {
-            if !rows.isEmpty { result.append(ListSection(id: id, title: title, icon: icon, colorName: color, threads: rows, collapsedByDefault: collapsed, cleanable: cleanable)) }
-        }
-        func rows(_ id: String) -> [ThreadSummary] { threads.filter { sectionID(of: $0) == id } }
-        add("github.attention", "GitHub · 需要处理", "exclamationmark.bubble.fill", "orange", rows("github.attention"))
-        add("github.activity", "GitHub · 有新动态", "text.bubble", "blue", rows("github.activity"))
-        add("github.routine", "GitHub · 仅机器人更新", "gearshape.2", "gray", rows("github.routine"), collapsed: true, cleanable: true)
-        add("github.read", "GitHub · 已读", "checkmark.circle", "gray", rows("github.read"))
-        add("jira", "Jira", "checklist", "cyan", rows("jira"))
-        add("googleDocs", "Google 文档", "doc.text", "green", rows("googleDocs"))
-        add("other", "其他邮件", "envelope", "gray", rows("other"))
-        return result
-    }
-
-    /// 一行按当前状态应该落在哪个分段。
-    private func sectionID(of t: ThreadSummary) -> String {
-        guard t.source == "github" else { return t.source }
-        if t.needsAttention { return "github.attention" }
-        if t.humanUnread > 0 { return "github.activity" }
-        return t.unreadCount > 0 ? "github.routine" : "github.read"
-    }
-
-    func isCollapsed(_ section: ListSection) -> Bool {
-        sectionOverrides[section.id] ?? section.collapsedByDefault
-    }
-
-    func toggleSection(_ section: ListSection) {
-        sectionOverrides[section.id] = !isCollapsed(section)
-    }
-
-    /// 按当前分段顺序、跳过折叠段的行：j/k 移动和加载更多都按它来。
-    var visibleThreads: [ThreadSummary] {
-        sections.filter { !isCollapsed($0) }.flatMap(\.threads)
-    }
+    /// 列表就是按邮件时间从新到旧排，已读 / 未读不影响顺序：点一行变成已读，它留在原地。
+    /// j/k 移动和加载更多都按它来。
+    var visibleThreads: [ThreadSummary] { threads }
 
     /// 一键清理：把收件箱里所有未读的例行机器人邮件标为已读。
     func cleanRoutine() {
@@ -471,7 +424,8 @@ final class ReaderModel: ObservableObject {
 
 /// 诊断日志：追加写到 ~/Library/Logs/MailBar-trace.log（统一日志会把字符串参数遮成 <private>，排查时看不到内容）。
 func trace(_ format: String, _ args: CVarArg...) {
-    let line = "\(ISO8601DateFormatter().string(from: Date())) " + String(format: format, arguments: args) + "\n"
+    #if DEBUG
+    let line = "\(ISO8601DateFormatter().string(from: Date())) [\(ProcessInfo.processInfo.processIdentifier)] " + String(format: format, arguments: args) + "\n"
     let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/MailBar-trace.log")
     if let handle = try? FileHandle(forWritingTo: url) {
         handle.seekToEndOfFile()
@@ -480,4 +434,5 @@ func trace(_ format: String, _ args: CVarArg...) {
     } else {
         try? Data(line.utf8).write(to: url)
     }
+    #endif
 }

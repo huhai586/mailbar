@@ -137,6 +137,12 @@ struct ThreadListView: View {
         .buttonStyle(PlainPointerButtonStyle())
     }
 
+    /// 行的标识里带上会变的状态：已读 / 未读变了就换一个新的行视图。
+    /// 只用 thread.id 时，LazyVStack 在「行换了位置、内容同时变了」时会继续显示旧内容（标成已读后那一行还是未读的样子）。
+    static func rowKey(_ t: ThreadSummary) -> String {
+        "\(t.id)|\(t.unreadCount)|\(t.humanUnread)|\(t.alertUnread)|\(t.routineUnread)"
+    }
+
     // MARK: - List
 
     private var list: some View {
@@ -145,26 +151,24 @@ struct ThreadListView: View {
                 LazyVStack(spacing: 0) {
                     let rules = reader.rulesByName
                     let visible = reader.visibleThreads
-                    ForEach(reader.sections) { section in
-                        // 没有分组标题了（已读 / 未读靠颜色区分），分组只决定排序，不再折叠
-                        ForEach(section.threads) { thread in
-                            ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
-                                      viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
-                                      compact: density != "spacious", showSnippet: showSnippets)
-                                .id(thread.id)
-                                .onTapGesture {
-                                    reader.selectedThreadID = thread.id
-                                    listFocused = true
+                    ForEach(reader.threads) { thread in
+                        ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
+                                  viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
+                                  compact: density != "spacious", showSnippet: showSnippets)
+                            .id(Self.rowKey(thread))
+                            .onTapGesture {
+                                trace("[Tap] id=%@ 未读=%d 当前选中=%@", thread.id, thread.unreadCount, reader.selectedThreadID ?? "-")
+                                reader.selectedThreadID = thread.id
+                                listFocused = true
+                            }
+                            .contextMenu {
+                                Button(thread.isUnread ? "标为已读" : "标为未读") { reader.toggleRead(threadId: thread.id) }
+                                if let url = ThreadRow.githubURL(for: thread) {
+                                    Button("在 GitHub 中打开") { NSWorkspace.shared.open(url) }
                                 }
-                                .contextMenu {
-                                    Button(thread.isUnread ? "标为已读" : "标为未读") { reader.toggleRead(threadId: thread.id) }
-                                    if let url = ThreadRow.githubURL(for: thread) {
-                                        Button("在 GitHub 中打开") { NSWorkspace.shared.open(url) }
-                                    }
-                                    Button("在 Gmail 中打开") { NSWorkspace.shared.open(gmailURL(threadId: thread.latestThreadId, account: service.accountEmail)) }
-                                }
-                                .onAppear { if thread.id == visible.last?.id { reader.loadMore() } }
-                        }
+                                Button("在 Gmail 中打开") { NSWorkspace.shared.open(gmailURL(threadId: thread.latestThreadId, account: service.accountEmail)) }
+                            }
+                            .onAppear { if thread.id == visible.last?.id { reader.loadMore() } }
                     }
                     if !reader.threads.isEmpty, !reader.hasMore, reader.searchText.isEmpty { olderFooter }
                 }
@@ -174,7 +178,7 @@ struct ThreadListView: View {
             .focused($listFocused)
             .onKeyPress(phases: .down) { handleKey($0) }
             .onChange(of: reader.selectedThreadID) { _, id in
-                if let id { proxy.scrollTo(id) }
+                if let id, let thread = reader.threads.first(where: { $0.id == id }) { proxy.scrollTo(Self.rowKey(thread)) }
             }
             .overlay { if reader.threads.isEmpty { emptyState } }
         }
