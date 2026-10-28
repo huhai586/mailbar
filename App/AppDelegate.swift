@@ -91,7 +91,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     private func updateActivationPolicy() {
-        let hasWindow = NSApp.windows.contains { $0.isVisible && ($0.canBecomeMain || $0.title.contains("设置") || $0.title.lowercased().contains("settings")) }
+        // 设置窗口的标题是当前标签页的名字（「通用」「AI」……），按标识认，不按标题认
+        let hasWindow = NSApp.windows.contains { $0.isVisible && ($0.canBecomeMain || $0.identifier?.rawValue == "MailBarSettings") }
         // 强提醒要让 Dock 图标跳动，显示期间也需要 Dock 图标
         let bounce = service.strongAlerts.isShowing && Pref.strongBounce
         NSApp.setActivationPolicy(hasWindow || bounce ? .regular : .accessory)

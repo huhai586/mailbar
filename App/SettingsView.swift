@@ -25,6 +25,7 @@ struct SettingsView: View {
         }
         .frame(width: 800, height: 640)
         .applyAppearance(appearance)
+        .background(SettingsWindowConfigurator())
     }
 }
 
@@ -501,5 +502,28 @@ private struct KindSettingsView: View {
             TextField("", text: value).textFieldStyle(.roundedBorder).font(.system(.caption, design: .monospaced))
             Text(help).font(.caption).foregroundStyle(.secondary)
         }
+    }
+}
+
+/// 设置窗口像对话框一样：始终压在主窗口上面，点主窗口也不会把它盖住；
+/// 切到别的应用时暂时隐藏，切回来自动出现，只有点关闭才会关掉。
+private struct SettingsWindowConfigurator: NSViewRepresentable {
+    static let identifier = NSUserInterfaceItemIdentifier("MailBarSettings")
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { Self.configure(view.window) }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { Self.configure(view.window) }
+    }
+
+    private static func configure(_ window: NSWindow?) {
+        guard let window, window.identifier != identifier else { return }
+        window.identifier = identifier
+        window.level = .floating
+        window.hidesOnDeactivate = true
     }
 }

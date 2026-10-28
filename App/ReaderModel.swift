@@ -65,6 +65,8 @@ final class ReaderModel: ObservableObject {
     @Published private(set) var threads: [ThreadSummary] = []
     @Published private(set) var hasMore = false
     @Published private(set) var messages: [MessageDetail] = []
+    /// 打开这个会话那一刻还没读的邮件。打开后很快会被自动标成已读，详情页靠它决定展开和定位哪几封
+    @Published private(set) var openedUnreadIDs: Set<String> = []
     @Published private(set) var labels: [LabelInfo] = []
     @Published private(set) var ruleCounts: [RuleCount] = []
     /// 各来源分组里「其他」的未读分组数（key = 来源）
@@ -273,12 +275,19 @@ final class ReaderModel: ObservableObject {
         autoMarkSuppressed = false
         guard let id = selectedThreadID, let store = service.store else {
             if !messages.isEmpty { messages = [] }
+            openedUnreadIDs = []
             return
         }
+        var first = true
         messagesObservation = store.observeMessages(inGroup: id, onError: { error in
             trace("[Detail] 出错：%@", error.localizedDescription)
         }) { [weak self] loaded in
             guard let self, self.selectedThreadID == id else { return }
+            if first {
+                // 先记下打开时的未读，再去自动标已读
+                first = false
+                self.openedUnreadIDs = Set(loaded.filter(\.isUnread).map(\.id))
+            }
             if loaded != self.messages { self.messages = loaded }
             self.autoMarkIfNeeded()
         }

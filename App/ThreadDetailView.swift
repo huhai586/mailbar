@@ -94,7 +94,8 @@ private struct ThreadConversation: View {
         // 整个会话都是例行机器人消息（比如单独一封 SonarQube 通知）时也不折叠：折成一行就没有详情可看了
         let fold = filter.tab == .all && shownMessages.contains { $0.messageKind != .botRoutine }
         for message in shownMessages {
-            if fold, message.messageKind == .botRoutine {
+            // 打开时还没读的例行消息不折叠：点进来就是为了看它
+            if fold, message.messageKind == .botRoutine, !reader.openedUnreadIDs.contains(message.id) {
                 run.append(message)
             } else {
                 flush()
@@ -231,7 +232,10 @@ private struct ThreadConversation: View {
             showAllOlder = true
         }
         if let target = focusTarget ?? firstExpandedAfterFold() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { proxy.scrollTo(target, anchor: .top) }
+            // 上面的邮件正文（网页）加载完会长高，把目标往下推：等它们排好版再对准一次
+            for delay in [0.05, 0.45, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { proxy.scrollTo(target, anchor: .top) }
+            }
         }
     }
 
@@ -243,11 +247,13 @@ private struct ThreadConversation: View {
         let relevant = nonRoutine.isEmpty ? messages : nonRoutine
         var open: Set<String> = []
         if let last = relevant.last { open.insert(last.id) }
-        // 从列表点进来是为了看新邮件：展开最近的几封未读（最多 5 封），并滚到其中最早的一封
-        let unread = Array(relevant.filter(\.isUnread).suffix(5))
+        // 从列表点进来是为了看新邮件：展开打开时还没读的（不管是真人还是机器人，最多 5 封），并滚到其中最早的一封
+        let unread = Array(messages.filter { reader.openedUnreadIDs.contains($0.id) }.suffix(5))
         for message in unread { open.insert(message.id) }
         expanded = open
         focusTarget = unread.first?.id
+        // 之前在这个会话里选过「真人」之类的筛选，会把未读的那封藏起来：先切回「全部」
+        if unread.contains(where: { !filter.includes($0.messageKind) }) { setFilter(DetailFilter()) }
     }
 
     private func firstExpandedAfterFold() -> String? {
