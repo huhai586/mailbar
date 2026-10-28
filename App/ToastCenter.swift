@@ -7,7 +7,9 @@ struct ToastItem: Identifiable, Equatable {
     enum Kind { case mail, calendar }
     let id = UUID()
     var kind: Kind = .mail
+    /// 标题：邮件主题 / 日程名
     var title: String
+    /// 正文：邮件内容的开头一段 / 日程的时间地点
     var body: String
     var accountID: String?
     var threadId: String?
@@ -126,19 +128,10 @@ private struct ToastCard: View {
                 .font(.system(size: 17)).foregroundStyle(item.kind == .calendar ? Theme.red : Theme.accent)
                 .frame(width: 24).padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.title).font(Theme.ui(13, .semibold)).foregroundStyle(Theme.text).lineLimit(2)
-                if !item.body.isEmpty { Text(item.body).font(Theme.ui(12)).foregroundStyle(Theme.muted).lineLimit(3) }
-                if item.joinURL != nil || item.judgedMessageId != nil {
-                    HStack(spacing: 8) {
-                        if let url = item.joinURL {
-                            Button("加入会议") { NSWorkspace.shared.open(url); center.dismiss(item.id) }.controlSize(.small)
-                        }
-                        if item.judgedMessageId != nil {
-                            Button("👍 有用") { center.feedback(item, 1) }.controlSize(.small)
-                            Button("👎 没用") { center.feedback(item, -1) }.controlSize(.small)
-                        }
-                    }
-                    .padding(.top, 3)
+                // 只有标题和一段正文：标题粗一点，正文浅色细字
+                Text(item.title).font(Theme.ui(13.5, .bold)).foregroundStyle(Theme.text).lineLimit(2)
+                if !item.body.isEmpty {
+                    Text(item.body).font(Theme.ui(12)).foregroundStyle(Theme.muted).lineLimit(3)
                 }
             }
             Spacer(minLength: 0)

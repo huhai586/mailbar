@@ -62,9 +62,14 @@ final class ReaderModel: ObservableObject {
     /// 每 +1 请求一次搜索框获得焦点
     @Published var focusSearchTick = 0
 
-    @Published private(set) var threads: [ThreadSummary] = []
+    @Published private(set) var threads: [ThreadSummary] = [] { didSet { threadsVersion &+= 1 } }
+    /// threads 每变一次 +1：列表据此判断分组缓存是否还有效（比逐行比较便宜得多）
+    private(set) var threadsVersion = 0
     @Published private(set) var hasMore = false
     @Published private(set) var messages: [MessageDetail] = []
+    /// messages 属于哪个会话。选中的会话一换，messages 要到新会话的邮件查出来才更新；
+    /// 详情页对照它，不会把上一个会话的邮件当成新会话的来排版（那样会闪一下）
+    @Published private(set) var messagesGroupID: String?
     /// 打开这个会话那一刻还没读的邮件。打开后很快会被自动标成已读，详情页靠它决定展开和定位哪几封
     @Published private(set) var openedUnreadIDs: Set<String> = []
     @Published private(set) var labels: [LabelInfo] = []
@@ -219,6 +224,10 @@ final class ReaderModel: ObservableObject {
     // MARK: - Loading
 
     /// 侧栏计数、概览这些汇总数据（同步或标已读之后 revision +1 时重算）。列表和详情走数据库订阅，不在这里。
+    /// 十几个统计查询合起来要二十多毫秒：放到后台线程去查（数据库读取本来就是并发的），查完回主线程一次性更新，
+    /// 主线程（也就是滚动、点击、打字）不会因为一次同步或标已读而卡一下。
+    private var summaryToken = 0
+
     private func reloadAll() {
         guard let store = service.store else {
             threads = []
@@ -228,32 +237,63 @@ final class ReaderModel: ObservableObject {
         // 邮件库是后来才打开的（首次启动 / 重新登录）：这时才能开始订阅
         if listObservation == nil { reloadThreads(resetPaging: false) }
         if messagesObservation == nil, selectedThreadID != nil { observeSelection() }
-        do {
-            labels = try store.labels()
+        summaryToken += 1
+        let token = summaryToken
+        let enabled = service.rules.filter(\.enabled)
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = Result { try Summary.load(store: store, enabledRules: enabled) }
+            await MainActor.run { [weak self] in
+                // 只认最新一次的结果：连着几次刷新时，先发出去的慢查询结果不能盖掉后发的
+                guard let self, token == self.summaryToken else { return }
+                switch result {
+                case .success(let summary): self.apply(summary)
+                case .failure(let error):
+                    trace("[ReloadAll] 出错：%@", error.localizedDescription)
+                    self.errorText = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    /// 一次汇总查询的全部结果（值类型，可以从后台线程交回主线程）。
+    private struct Summary: @unchecked Sendable {
+        var labels: [LabelInfo]
+        var ruleCounts: [RuleCount]
+        var restCounts: [String: Int]
+        var stats: Stats
+        var inboxSourceCounts: [String: SourceCount]
+        var jiraHost: String?
+        var login: String?
+        var dashboard: [ThreadSummary]
+
+        static func load(store: MailStore, enabledRules: [Rule]) throws -> Summary {
             let counts = try store.unreadMatchCounts().map { RuleCount(name: $0.name, count: $0.count) }
-            if counts != ruleCounts { ruleCounts = counts }
-            let enabled = service.rules.filter(\.enabled)
             var rest: [String: Int] = [:]
-            for (source, rules) in Dictionary(grouping: enabled, by: RuleGrouping.key) where source != "other" {
+            for (source, rules) in Dictionary(grouping: enabledRules, by: RuleGrouping.key) where source != "other" {
                 rest[source] = try store.unreadThreadCount(in: .sourceRest(source: source, excluding: rules.map(\.name)))
             }
-            if rest != restCounts { restCounts = rest }
-            let newStats = Stats(inboxUnread: try store.unreadThreadCount(in: .label("INBOX")),
-                                 importantUnread: try store.unreadThreadCount(in: .important),
-                                 attention: try store.attentionCount(groupByPR: true),
-                                 routineUnread: try store.unreadMessageIDs(kind: .botRoutine).count,
-                                 humanUnread: try store.unreadMessageIDs(kind: .human).count)
-            if newStats != stats { stats = newStats }
-            inboxSourceCounts = try store.sourceCounts(in: .label("INBOX"), groupByPR: true)
-            jiraHost = try store.jiraHost()
-            let login = try store.detectedGitHubLogin()
-            if login != detectedLogin { detectedLogin = login }
-            let top = try store.threads(in: .attention, groupByPR: true, limit: 8)
-            if top != dashboard { dashboard = top }
-        } catch {
-            trace("[ReloadAll] 出错：%@", error.localizedDescription)
-            errorText = error.localizedDescription
+            let stats = Stats(inboxUnread: try store.unreadThreadCount(in: .label("INBOX")),
+                              importantUnread: try store.unreadThreadCount(in: .important),
+                              attention: try store.attentionCount(groupByPR: true),
+                              routineUnread: try store.unreadMessageIDs(kind: .botRoutine).count,
+                              humanUnread: try store.unreadMessageIDs(kind: .human).count)
+            return Summary(labels: try store.labels(), ruleCounts: counts, restCounts: rest, stats: stats,
+                           inboxSourceCounts: try store.sourceCounts(in: .label("INBOX"), groupByPR: true),
+                           jiraHost: try store.jiraHost(), login: try store.detectedGitHubLogin(),
+                           dashboard: try store.threads(in: .attention, groupByPR: true, limit: 8))
         }
+    }
+
+    private func apply(_ s: Summary) {
+        if s.labels != labels { labels = s.labels }
+        if s.ruleCounts != ruleCounts { ruleCounts = s.ruleCounts }
+        if s.restCounts != restCounts { restCounts = s.restCounts }
+        if s.stats != stats { stats = s.stats }
+        if s.inboxSourceCounts != inboxSourceCounts { inboxSourceCounts = s.inboxSourceCounts }
+        if s.jiraHost != jiraHost { jiraHost = s.jiraHost }
+        if s.login != detectedLogin { detectedLogin = s.login }
+        if s.dashboard != dashboard { dashboard = s.dashboard }
+        errorText = nil
     }
 
     /// 切换邮箱时会同时改 mailbox / sourceFilter / searchText，每个都会触发一次重新加载；合并成下一轮只加载一次
@@ -315,6 +355,7 @@ final class ReaderModel: ObservableObject {
         arrivedWhileViewing = []
         guard let id = selectedThreadID, let store = service.store else {
             if !messages.isEmpty { messages = [] }
+            messagesGroupID = nil
             openedUnreadIDs = []
             return
         }
@@ -333,6 +374,7 @@ final class ReaderModel: ObservableObject {
                 self.arrivedWhileViewing.formUnion(loaded.map(\.id).filter { !known.contains($0) })
             }
             if loaded != self.messages { self.messages = loaded }
+            if self.messagesGroupID != id { self.messagesGroupID = id }
             self.autoMarkIfNeeded()
         }
     }

@@ -7,6 +7,49 @@ private final class PassthroughWebView: WKWebView {
     override func scrollWheel(with event: NSEvent) { nextResponder?.scrollWheel(with: event) }
 }
 
+/// 网页视图池。新建一个 WKWebView 要启动一个网页内容进程，实测每个约 40 ms；而把新内容装进一个已有的视图只要约 1 ms。
+/// 所以用完的视图不销毁，放回池里，下一封邮件直接拿来用；启动时先热好几个，第一次打开邮件就是「拿来即用」。
+@MainActor
+final class WebViewPool {
+    static let shared = WebViewPool()
+    private var idle: [WKWebView] = []
+    /// 池里最多留几个空闲的（每个是一个独立的网页进程，要占内存）
+    private let capacity = 4
+
+    fileprivate func make() -> WKWebView {
+        let view = PassthroughWebView(frame: .zero, configuration: HTMLBodyView.makeConfiguration())
+        view.setValue(false, forKey: "drawsBackground")
+        view.postsFrameChangedNotifications = true
+        return view
+    }
+
+    /// 取一个视图：池里有就直接用，没有再新建；取走之后在后台补一个，池子保持温热。
+    func acquire() -> WKWebView {
+        let view = idle.popLast() ?? make()
+        DispatchQueue.main.async { [weak self] in self?.warm(count: 2) }
+        return view
+    }
+
+    /// 用完的视图放回来：清掉内容和回调，池满了就丢弃。
+    func release(_ view: WKWebView) {
+        view.stopLoading()
+        view.navigationDelegate = nil
+        view.removeFromSuperview()
+        guard idle.count < capacity else { return }
+        view.loadHTMLString("", baseURL: nil)
+        idle.append(view)
+    }
+
+    /// 池里至少有 count 个空闲视图（启动时和每次取走之后调用）。
+    func warm(count: Int) {
+        while idle.count < min(count, capacity) {
+            let view = make()
+            view.loadHTMLString("", baseURL: nil)   // 让网页进程真的启动起来
+            idle.append(view)
+        }
+    }
+}
+
 /// 渲染 HTML 邮件：禁用 JavaScript，默认拦截远程资源，点击链接交给系统浏览器；
 /// 高度随内容自动撑开（所以多封邮件可以排在同一个时间线里）；深色模式下可反色。
 struct HTMLBodyView: NSViewRepresentable {
@@ -26,12 +69,15 @@ struct HTMLBodyView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> WKWebView {
-        let view = PassthroughWebView(frame: .zero, configuration: Self.makeConfiguration())
+        let view = WebViewPool.shared.acquire()
         view.navigationDelegate = context.coordinator
-        view.setValue(false, forKey: "drawsBackground")
-        view.postsFrameChangedNotifications = true
         context.coordinator.observe(view)
         return view
+    }
+
+    static func dismantleNSView(_ view: WKWebView, coordinator: Coordinator) {
+        coordinator.stopObserving()
+        WebViewPool.shared.release(view)
     }
 
     /// 量过的高度，按内容记住：再次打开同一封邮件时直接用最终高度排版，不会先 160 再跳到实际高度。
@@ -39,14 +85,8 @@ struct HTMLBodyView: NSViewRepresentable {
 
     static func heightKey(html: String, dark: Bool, style: Style) -> String { "\(dark)|\(style)|\(html.hashValue)" }
 
-    /// 启动时先建一个看不见的网页视图：网页内容进程启动要几百毫秒，提前热好，第一次打开邮件就不用等。
-    @MainActor private static var warmView: WKWebView?
-    @MainActor static func prewarm() {
-        guard warmView == nil else { return }
-        let view = WKWebView(frame: .zero, configuration: makeConfiguration())
-        view.loadHTMLString(document(for: "", allowRemoteImages: false, dark: false, style: .markdown), baseURL: nil)
-        warmView = view
-    }
+    /// 启动时先热好几个网页视图：网页内容进程启动要几十到几百毫秒，提前热好，第一次打开邮件就不用等。
+    @MainActor static func prewarm() { WebViewPool.shared.warm(count: 2) }
 
     static func makeConfiguration() -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
@@ -58,13 +98,15 @@ struct HTMLBodyView: NSViewRepresentable {
 
     func updateNSView(_ view: WKWebView, context: Context) {
         context.coordinator.parent = self
-        let key = "\(allowRemoteImages)|\(dark)|\(style)|\(html.hashValue)"
-        guard context.coordinator.loadedKey != key else {
+        // 没变就不重载。比较的是字符串本身：内容是同一块内存时一比就知道相同，不用像以前那样每次重绘都对整段 HTML 算哈希
+        let flags = "\(allowRemoteImages)|\(dark)|\(style)"
+        guard context.coordinator.loadedHTML != html || context.coordinator.loadedFlags != flags else {
             context.coordinator.applyCurrentHit(view)
             return
         }
-        context.coordinator.loadedKey = key
-        view.loadHTMLString(Self.document(for: html, allowRemoteImages: allowRemoteImages, dark: dark, style: style), baseURL: nil)
+        context.coordinator.loadedHTML = html
+        context.coordinator.loadedFlags = flags
+        context.coordinator.navigation = view.loadHTMLString(Self.document(for: html, allowRemoteImages: allowRemoteImages, dark: dark, style: style), baseURL: nil)
     }
 
     static func document(for body: String, allowRemoteImages: Bool, dark: Bool, style: Style = .email) -> String {
@@ -136,13 +178,21 @@ struct HTMLBodyView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var parent: HTMLBodyView
-        var loadedKey: String?
+        var loadedHTML: String?
+        var loadedFlags: String?
+        /// 我们自己发起的那次加载。复用的视图上一次放回池里时发的「清空」加载可能这时才结束，它的回调不能当成这封邮件的
+        var navigation: WKNavigation?
         private var frameObserver: NSObjectProtocol?
         private var lastWidth: CGFloat = 0
 
         init(_ parent: HTMLBodyView) { self.parent = parent }
 
         deinit { if let frameObserver { NotificationCenter.default.removeObserver(frameObserver) } }
+
+        func stopObserving() {
+            if let frameObserver { NotificationCenter.default.removeObserver(frameObserver) }
+            frameObserver = nil
+        }
 
         func observe(_ view: WKWebView) {
             frameObserver = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: view, queue: .main) { [weak self, weak view] _ in
@@ -163,10 +213,12 @@ struct HTMLBodyView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard navigation === self.navigation else { return }
             appliedHit = .none
             applyCurrentHit(webView)
             measure(webView)
-            // 远程图片陆续加载完会再撑高
+            // 远程图片陆续加载完会再撑高。没有图片的正文（大多数通知邮件）高度已经定了，省掉这几次往返
+            guard parent.html.contains("<img") else { return }
             for delay in [0.5, 1.5, 4.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak webView] in
                     if let webView { self?.measure(webView) }
@@ -191,6 +243,7 @@ struct HTMLBodyView: NSViewRepresentable {
                         HTMLBodyView.heightCache[HTMLBodyView.heightKey(html: self.parent.html, dark: self.parent.dark, style: self.parent.style)] = target
                     }
                     if abs(self.parent.height - target) > 1 { self.parent.height = target }
+
                 }
             }
         }

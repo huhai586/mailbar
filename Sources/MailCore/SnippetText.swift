@@ -17,6 +17,13 @@ public enum SnippetText {
             .trimmingCharacters(in: CharacterSet(charactersIn: " —–-"))
     }
 
+    /// 截到最多 limit 个字，被截掉了就加「…」。limit <= 0 返回空（表示不显示预览）。
+    public static func clip(_ text: String, to limit: Int) -> String {
+        guard limit > 0 else { return "" }
+        guard text.count > limit else { return text }
+        return String(text.prefix(limit)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+
     static func decodeEntities(_ text: String) -> String {
         guard text.contains("&") else { return text }
         var result = text

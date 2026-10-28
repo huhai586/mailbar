@@ -76,7 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                 self?.service.toasts.show(ToastItem(kind: .calendar, title: "现在开始：View Master Standup", body: "18:00–18:30 · 会议室 B",
                                                     joinURL: URL(string: "https://meet.google.com/abc")))
-                self?.service.toasts.show(ToastItem(title: "【示例】通知预览", body: "这是一条测试通知，用来看看显示多久。"))
+                self?.service.toasts.show(ToastItem(title: "feat(statemachinebuilder)[AEP-1461]: Support Modular Video ad response for eDSPs",
+                                                    body: SnippetText.clip("@YueVungle requested your review on this pull request. In viewmaster/src/util/get-https-upgrade-url.ts: this should also handle the case where the scheme is missing, otherwise we crash.", to: Pref.notificationPreviewLimit)))
             }
         }
         #endif

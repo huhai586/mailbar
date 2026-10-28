@@ -49,6 +49,8 @@ enum Pref {
     /// 通知的呈现方式：card = 应用自己的通知卡片（显示时长可调），system = macOS 系统通知（时长由系统决定）
     static let notificationStyle = "notificationStyle"
     static let toastSeconds = "toastSeconds"
+    /// 通知里附带邮件正文的前多少个字（0 = 不附带）
+    static let notificationPreviewChars = "notificationPreviewChars"
     // 日历提醒
     static let calendarReminders = "calendarReminders"
     static let calendarLeadMinutes = "calendarLeadMinutes"
@@ -100,6 +102,7 @@ enum Pref {
         defaultSound: "",
         notificationStyle: "card",
         toastSeconds: 10,
+        notificationPreviewChars: 100,
         calendarReminders: true,
         calendarLeadMinutes: 0,
         strongRepeatSeconds: 10,
@@ -144,6 +147,7 @@ enum Pref {
     static var useToastCards: Bool { (store.string(forKey: notificationStyle) ?? "card") == "card" }
     /// 通知卡片显示多少秒；0 = 一直显示到点击
     static var toastDuration: TimeInterval { TimeInterval(store.integer(forKey: toastSeconds)) }
+    static var notificationPreviewLimit: Int { max(0, store.integer(forKey: notificationPreviewChars)) }
     static var calendarRemindersOn: Bool { store.bool(forKey: calendarReminders) }
     static var calendarLead: TimeInterval { TimeInterval(max(0, store.integer(forKey: calendarLeadMinutes))) * 60 }
     static var defaultSoundName: String { store.string(forKey: defaultSound) ?? "" }

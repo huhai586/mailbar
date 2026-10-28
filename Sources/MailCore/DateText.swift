@@ -2,13 +2,30 @@ import Foundation
 
 /// 邮件列表和详情里的时间显示。
 public enum DateText {
+    /// DateFormatter 创建一次要几十微秒（列表每次重绘每行都要用好几个），按（格式、日历、时区）缓存起来复用。
+    private static let formatters = FormatterCache()
+
+    private final class FormatterCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var cache: [String: DateFormatter] = [:]
+
+        func string(_ date: Date, _ pattern: String, _ calendar: Calendar) -> String {
+            let key = "\(pattern)|\(calendar.identifier)|\(calendar.timeZone.identifier)"
+            return lock.withLock {
+                if let f = cache[key] { return f.string(from: date) }
+                let f = DateFormatter()
+                f.calendar = calendar
+                f.locale = Locale(identifier: "zh_CN")
+                f.timeZone = calendar.timeZone
+                f.dateFormat = pattern
+                cache[key] = f
+                return f.string(from: date)
+            }
+        }
+    }
+
     private static func format(_ date: Date, _ pattern: String, _ calendar: Calendar) -> String {
-        let f = DateFormatter()
-        f.calendar = calendar
-        f.locale = Locale(identifier: "zh_CN")
-        f.timeZone = calendar.timeZone
-        f.dateFormat = pattern
-        return f.string(from: date)
+        formatters.string(date, pattern, calendar)
     }
 
     /// 列表里的简短时间：今天 14:05 / 昨天 / 10月3日 / 2024/12/3
@@ -49,7 +66,9 @@ public enum DateText {
 
     /// 同一天的邮件分到一组用的键。
     public static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
-        format(date, "yyyy-MM-dd", calendar)
+        // 只取年月日三个数，比格式化成字符串快得多（列表分组对每一行都要算）
+        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
     /// 详情里的完整时间：2026年10月26日 21:55

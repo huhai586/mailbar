@@ -8,19 +8,23 @@ public struct RuleHit: Equatable, Sendable {
     public let subject: String
     public let from: String
     public let snippet: String
+    /// 邮件正文开头的一段（整理过：去掉 GitHub 的固定开场白和页脚），通知里显示它让人不用点开就能看到内容。
+    /// snippet 在 AI 判断过的通知里被换成了 AI 的理由，所以单独存一份。
+    public let preview: String
     /// 规则里配置的声音（nil = 默认通知音，"none" = 静音）
     public let sound: String?
     /// 规则是"强提醒"
     public let strong: Bool
 
     public init(messageId: String, threadId: String, ruleName: String, subject: String, from: String,
-                snippet: String, sound: String?, strong: Bool) {
+                snippet: String, sound: String?, strong: Bool, preview: String = "") {
         self.messageId = messageId
         self.threadId = threadId
         self.ruleName = ruleName
         self.subject = subject
         self.from = from
         self.snippet = snippet
+        self.preview = preview
         self.sound = sound
         self.strong = strong
     }
@@ -112,7 +116,7 @@ final class MonitorState: @unchecked Sendable {
                 guard first, mode == .incremental, rule.notify, isAlertable(message) else { continue }
                 let hit = RuleHit(messageId: message.id, threadId: message.threadId, ruleName: rule.name,
                                   subject: message.subject, from: message.from, snippet: message.snippet,
-                                  sound: rule.sound, strong: rule.strong)
+                                  sound: rule.sound, strong: rule.strong, preview: SnippetText.preview(message.snippet))
                 if judging { ruleHits.append(hit) } else { lock.withLock { pending.append(hit) } }
             }
             if judging, mode == .incremental, isAlertable(message) {
@@ -124,7 +128,7 @@ final class MonitorState: @unchecked Sendable {
             if mode == .incremental, newMailAlerts.accepts(kind: message.kind), isAlertable(message) {
                 let hit = RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "新邮件",
                                   subject: message.subject, from: message.from, snippet: message.snippet,
-                                  sound: nil, strong: false)
+                                  sound: nil, strong: false, preview: SnippetText.preview(message.snippet))
                 lock.withLock { pending.append(hit) }
             }
         }
@@ -160,11 +164,12 @@ final class MonitorState: @unchecked Sendable {
                             // 沿用规则的名字、声音和强提醒，只把理由换成 AI 的
                             return candidate.ruleHits.map {
                                 RuleHit(messageId: $0.messageId, threadId: $0.threadId, ruleName: $0.ruleName, subject: $0.subject,
-                                        from: $0.from, snippet: snippet, sound: $0.sound, strong: $0.strong)
+                                        from: $0.from, snippet: snippet, sound: $0.sound, strong: $0.strong, preview: $0.preview)
                             }
                         }
                         return [RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "AI 判定",
-                                        subject: message.subject, from: message.from, snippet: snippet, sound: nil, strong: false)]
+                                        subject: message.subject, from: message.from, snippet: snippet, sound: nil, strong: false,
+                                        preview: SnippetText.preview(message.snippet))]
                     } catch {
                         return fallbackHits(for: candidate)
                     }
@@ -186,7 +191,8 @@ final class MonitorState: @unchecked Sendable {
         let message = candidate.message
         guard newMailAlerts.accepts(kind: message.kind) else { return [] }
         return [RuleHit(messageId: message.id, threadId: message.threadId, ruleName: "新邮件",
-                       subject: message.subject, from: message.from, snippet: message.snippet, sound: nil, strong: false)]
+                       subject: message.subject, from: message.from, snippet: message.snippet, sound: nil, strong: false,
+                       preview: SnippetText.preview(message.snippet))]
     }
 
     /// 只提醒收件箱里还没读的、足够新的邮件。

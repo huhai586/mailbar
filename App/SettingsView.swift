@@ -212,6 +212,7 @@ private struct AlertSettingsView: View {
     @AppStorage(Pref.defaultSound) private var defaultSound = ""
     @AppStorage(Pref.notificationStyle) private var notificationStyle = "card"
     @AppStorage(Pref.toastSeconds) private var toastSeconds = 10
+    @AppStorage(Pref.notificationPreviewChars) private var previewChars = 100
     @AppStorage(Pref.calendarReminders) private var calendarReminders = true
     @AppStorage(Pref.calendarLeadMinutes) private var calendarLead = 0
     @AppStorage(Pref.strongRepeatSeconds) private var repeatSeconds = 10
@@ -245,6 +246,15 @@ private struct AlertSettingsView: View {
             .disabled(false)
 
             Section("通知显示") {
+                Picker("附带邮件内容", selection: $previewChars) {
+                    Text("不附带").tag(0)
+                    Text("前 50 个字").tag(50)
+                    Text("前 100 个字").tag(100)
+                    Text("前 150 个字").tag(150)
+                    Text("前 200 个字").tag(200)
+                }
+                Text("通知只有两样：标题是邮件主题，正文是邮件内容的开头一段（GitHub 通知会去掉固定的开场白），不用点开就能看到内容。邮件自带的摘要最多约 200 字。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Picker("通知样式", selection: $notificationStyle) {
                     Text("应用内卡片（可设置显示时长）").tag("card")
                     Text("系统通知").tag("system")
@@ -263,7 +273,8 @@ private struct AlertSettingsView: View {
                     HStack {
                         Spacer()
                         Button("试一下通知") {
-                            service.notifier.post(id: "demo-\(UUID().uuidString)", title: "【示例】通知预览", body: "这是一条测试通知，用来看看显示多久。",
+                            service.notifier.post(id: "demo-\(UUID().uuidString)", title: "【示例】通知预览",
+                                                  body: "fix(VM-3557): empty the endcard iframe\n" + SnippetText.clip("@kobolsky-vungle commented on this pull request. In viewmaster/src/util/get-https-upgrade-url.ts: this should also handle the case where the scheme is missing, otherwise we will crash.", to: Pref.notificationPreviewLimit),
                                                   threadId: nil, useDefaultSound: true)
                         }
                     }

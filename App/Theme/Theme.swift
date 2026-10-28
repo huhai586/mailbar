@@ -34,6 +34,13 @@ enum Theme {
     static let hover = dynamic(0xFFF1D6, 0x000000, night: 0xFFFFFF, day: 0x000000, alpha: 0.04)
     static let selection = dynamic(0xF5A524, 0x2F5D46, night: 0x5B9DFF, day: 0x1F6FEB, alpha: 0.16)
 
+    // 未读行的底色：按「普通 / 待处理 / 出问题」三档，四个主题（终端 / 纸质 / 夜间 / 日间）各自一套，都是在该主题的底色上
+    // 轻微偏一点色调，不透明，亮度只比背景高（深色）或低（浅色）一点点；色调跟着各主题的强调色走（琥珀 / 墨绿 / 蓝），红色档统一偏红。
+    //                         终端(深)  纸质(浅)  夜间(深)  日间(浅)
+    static let unreadFill     = dynamic(0x241F17, 0xF0EBDD, night: 0x121A38, day: 0xEBF0F8)
+    static let unreadAttention = dynamic(0x30271A, 0xE4EADB, night: 0x15244F, day: 0xDDE9FA)
+    static let unreadAlert    = dynamic(0x35201A, 0xF5E3DB, night: 0x2C1A2C, day: 0xFBE5E6)
+
     // 文字
     static let text = dynamic(0xE9E3D6, 0x1F1D19, night: 0xDDE4F5, day: 0x1B2333)
     static let muted = dynamic(0x8A8273, 0x6B665A, night: 0x8190B5, day: 0x5B6780)

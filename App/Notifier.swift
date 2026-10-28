@@ -80,10 +80,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func postHit(_ hit: RuleHit, useDefaultSound: Bool, accountID: String?, forceSystem: Bool = false) {
-        // AI 判断过的（理由以「AI：」开头）带上反馈按钮
+        // AI 判断过的（理由以「AI：」开头）系统通知上带 👍 / 👎 操作
         let judged = hit.snippet.hasPrefix("AI：")
-        post(id: "\(hit.messageId)-\(hit.ruleName)", title: "【\(hit.ruleName)】\(MailAddress.parse(hit.from).displayName)",
-             body: judged ? "\(hit.subject)\n\(hit.snippet)" : hit.subject, threadId: hit.threadId, useDefaultSound: useDefaultSound,
+        // 只有标题（邮件主题）和正文（邮件内容的前几十个字）；没有内容可显示时用发件人顶上
+        let subject = hit.subject.trimmingCharacters(in: .whitespaces)
+        var body = SnippetText.clip(hit.preview, to: Pref.notificationPreviewLimit)
+        if body == subject { body = "" }
+        if body.isEmpty { body = MailAddress.parse(hit.from).displayName }
+        post(id: "\(hit.messageId)-\(hit.ruleName)", title: subject.isEmpty ? "（无主题）" : subject, body: body,
+             threadId: hit.threadId, useDefaultSound: useDefaultSound,
              judgedMessageId: judged ? hit.messageId : nil, accountID: accountID, forceSystem: forceSystem)
     }
 
@@ -92,8 +97,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         if Pref.useToastCards, !forceSystem, let toasts {
             // 应用内卡片：显示时长由设置决定；提示音这里自己播（系统通知才会自带）
             if useDefaultSound { SoundLibrary.play("Glass") }
-            let item = ToastItem(kind: calendar ? .calendar : .mail, title: title, body: body, accountID: accountID, threadId: threadId,
-                                 joinURL: joinURL, judgedMessageId: judgedMessageId)
+            var item = ToastItem(kind: calendar ? .calendar : .mail, title: title, body: body)
+            item.kind = calendar ? .calendar : .mail
+            item.accountID = accountID
+            item.threadId = threadId
+            item.joinURL = joinURL
+            item.judgedMessageId = judgedMessageId
             Task { @MainActor in toasts.show(item) }
             return
         }

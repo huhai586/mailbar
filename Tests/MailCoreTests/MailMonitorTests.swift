@@ -51,7 +51,7 @@ private let alertRules = """
         h.api.add("new", subject: "磁盘告警 90%", from: "mon@corp.com")
         let first = try await h.monitor.syncOnce()
         #expect(first.alerts == [RuleHit(messageId: "new", threadId: "t-new", ruleName: "告警", subject: "磁盘告警 90%",
-                                         from: "mon@corp.com", snippet: "snip", sound: "Sosumi", strong: false)])
+                                         from: "mon@corp.com", snippet: "snip", sound: "Sosumi", strong: false, preview: "snip")])
 
         // 之后的标签变化不会让同一封邮件再次提醒
         h.api.removeLabel("UNREAD", from: "new")

@@ -9,9 +9,11 @@ struct ThreadDetailView: View {
 
     var body: some View {
         Group {
-            if reader.selectedThreadID != nil, !reader.messages.isEmpty {
+            // 视图跟着「邮件属于哪个会话」走，而不是跟着选中项走：选中一换，新会话的邮件还没查出来的那一瞬间，
+            // 继续显示上一个会话（不闪空白，也不会拿新会话的编号去排旧会话的邮件）；查出来的同一帧直接换成新的
+            if reader.selectedThreadID != nil, !reader.messages.isEmpty, let group = reader.messagesGroupID {
                 ThreadConversation(reader: reader, service: service)
-                    .id(reader.selectedThreadID)   // 换会话时重置展开状态
+                    .id(group)   // 换会话时重置展开状态
             } else if reader.selectedThreadID != nil {
                 Color.clear
             } else {
@@ -60,13 +62,15 @@ private struct ThreadConversation: View {
     }
 
     private var messages: [MessageDetail] { reader.messages }
-    private var filter: DetailFilter { reader.detailFilters[reader.selectedThreadID ?? ""] ?? DetailFilter() }
+    /// 这个视图显示的是哪个会话（跟着邮件走，见 ThreadDetailView）
+    private var groupID: String? { reader.messagesGroupID }
+    private var filter: DetailFilter { reader.detailFilters[groupID ?? ""] ?? DetailFilter() }
     private var shownMessages: [MessageDetail] { messages.filter { filter.includes($0.messageKind) } }
     private var humanMessages: [MessageDetail] { messages.filter { $0.messageKind == .human } }
     private var autoMessages: [MessageDetail] { messages.filter { $0.messageKind != .human } }
     /// 真人和自动化都有才需要筛选
     private var showsFilterBar: Bool { !humanMessages.isEmpty && !autoMessages.isEmpty }
-    private func setFilter(_ f: DetailFilter) { if let id = reader.selectedThreadID { reader.detailFilters[id] = f } }
+    private func setFilter(_ f: DetailFilter) { if let id = groupID { reader.detailFilters[id] = f } }
     private var subject: String { messages.last?.subject ?? "" }
     private var info: NotificationInfo? { reader.primaryInfo }
     /// 侧栏正在看的规则：每封都命中它，头部不用再重复显示
@@ -138,7 +142,7 @@ private struct ThreadConversation: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Theme.pad(10)) {
-                        if let key = reader.selectedThreadID {
+                        if let key = groupID {
                             AISummaryCard(reader: reader, groupKey: key, messages: messages, title: subject)
                         }
                         if shownMessages.isEmpty {
@@ -290,8 +294,9 @@ private struct ThreadConversation: View {
         if let id = focusTarget, !items.contains(where: { if case .message(let m) = $0 { return m.id == id } else { return false } }) {
             showAllOlder = true
         }
-        if let target = focusTarget ?? firstExpandedAfterFold() {
-            // 上面的邮件正文（网页）加载完会长高，把目标往下推：等它们排好版再对准一次
+        // 只有有未读（或搜索命中）要看的时候才自动滚到那一封；已读的会话停在顶部，不替你位移
+        if let target = focusTarget {
+            // 上面的邮件正文（网页）加载完会长高，把目标往下推：再对准几次
             for delay in [0.05, 0.45, 1.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { proxy.scrollTo(target, anchor: .top) }
             }
@@ -358,13 +363,6 @@ private struct ThreadConversation: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 0.5) }
     }
 
-    private func firstExpandedAfterFold() -> String? {
-        items.compactMap { item -> String? in
-            if case .message(let m) = item, expanded.contains(m.id) { return m.id }
-            return nil
-        }.first
-    }
-
     // MARK: Header
 
     private var serviceColor: Color { info.map { Theme.color(for: $0.service) } ?? Theme.muted }
@@ -378,20 +376,11 @@ private struct ThreadConversation: View {
                     .font(Theme.title(19, .semibold, scheme: scheme))
                     .foregroundStyle(Theme.text)
                     .textSelection(.enabled)
+                    // 标题固定占两行的高度（不够两行的留白、超过两行的截断）：不同会话的标题长短不一，头部高度不再跟着变，
+                    // 切换时下面的内容不会上下位移。完整标题悬停可见
+                    .lineLimit(2, reservesSpace: true)
+                    .help((info?.title ?? subject))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 6) {
-                    ActionButton(icon: reader.selectedThreadHasUnread ? "envelope.open" : "envelope.badge",
-                                 title: reader.selectedThreadHasUnread ? "已读" : "未读", key: "m",
-                                 help: reader.selectedThreadHasUnread ? "把整组邮件标为已读" : "把最新一封标为未读", enabled: service.canModify) {
-                        if let id = reader.selectedThreadID { reader.toggleRead(threadId: id) }
-                    }
-                    if let link {
-                        ActionButton(icon: link.icon, title: link.name, key: "g", help: "在 \(link.name) 中打开") { NSWorkspace.shared.open(link.url) }
-                    }
-                    ActionButton(icon: "arrow.up.right.square", title: "Gmail", key: "o", help: "在 Gmail 中打开（回复等）") {
-                        NSWorkspace.shared.open(gmailURL(threadId: reader.selectedThread?.latestThreadId ?? messages.last?.threadId, account: service.accountEmail))
-                    }
-                }
             }
             FlowLayout(spacing: 5, lineSpacing: 4) {
                 if let info {
@@ -590,8 +579,9 @@ private final class MarkdownCache: @unchecked Sendable {
     static let shared = MarkdownCache()
     private let cache = NSCache<NSString, NSString>()
 
-    func html(for markdown: String) -> String {
-        let key = "\(markdown.count)-\(markdown.hashValue)" as NSString
+    /// key：能代表这段 Markdown 的标识（邮件 id）。不用内容做键——对几十 KB 的正文算哈希，每次重绘都要付一遍。
+    func html(for markdown: String, key id: String) -> String {
+        let key = "\(id)|\(markdown.utf8.count)" as NSString
         if let cached = cache.object(forKey: key) { return cached as String }
         let rendered = MarkdownRenderer.html(from: markdown)
         cache.setObject(rendered as NSString, forKey: key)
@@ -777,9 +767,9 @@ struct MessageCard: View {
     private var content: some View {
         switch mode {
         case .html:
-            if let html = message.bodyHtml { webContent(marked(html), style: .email, dark: scheme == .dark && invertEmails) }
+            if let html = message.bodyHtml { webContent(marked(html, tag: "html"), style: .email, dark: scheme == .dark && invertEmails) }
         case .markdown:
-            webContent(marked(MarkdownCache.shared.html(for: plainText)), style: .markdown, dark: scheme == .dark)
+            webContent(marked(MarkdownCache.shared.html(for: plainText, key: message.id), tag: "md"), style: .markdown, dark: scheme == .dark)
         case .text:
             Text(highlightedText.text)
                 .font(monoBody ? Theme.mono(12.5) : Theme.ui(13.5))
@@ -795,9 +785,9 @@ struct MessageCard: View {
 
     // MARK: 搜索高亮
 
-    private func marked(_ html: String) -> String {
+    private func marked(_ html: String, tag: String) -> String {
         guard let highlight else { return html }
-        return HitCache.marked(html, query: highlight).html
+        return HitCache.marked(html, query: highlight, key: "\(message.id)|\(tag)").html
     }
 
     /// 原文显示时的高亮：命中处加底色，当前这一处更醒目。
@@ -819,8 +809,8 @@ struct MessageCard: View {
     private var hitCount: Int {
         guard let highlight else { return 0 }
         switch mode {
-        case .html: return message.bodyHtml.map { HitCache.marked($0, query: highlight).count } ?? 0
-        case .markdown: return HitCache.marked(MarkdownCache.shared.html(for: plainText), query: highlight).count
+        case .html: return message.bodyHtml.map { HitCache.marked($0, query: highlight, key: "\(message.id)|html").count } ?? 0
+        case .markdown: return HitCache.marked(MarkdownCache.shared.html(for: plainText, key: message.id), query: highlight, key: "\(message.id)|md").count
         case .text: return highlightedText.count
         }
     }
@@ -838,7 +828,7 @@ struct MessageCard: View {
 
     private func webContent(_ html: String, style: HTMLBodyView.Style, dark: Bool) -> some View {
         VStack(spacing: 0) {
-            if !allowRemote, HTMLBodyView.hasRemoteImages(html) {
+            if !allowRemote, RemoteImageCache.has(html, key: "\(message.id)|\(style)") {
                 HStack(spacing: 8) {
                     Image(systemName: "photo.badge.exclamationmark").foregroundStyle(Theme.muted)
                     Text("已阻止远程图片").font(Theme.ui(11.5)).foregroundStyle(Theme.muted)
@@ -870,7 +860,7 @@ struct MessageText {
     @MainActor private static var cache: [String: MessageText] = [:]
 
     @MainActor static func of(_ message: MessageDetail) -> MessageText {
-        let key = "\(message.id)|\(message.bodyText.count)"
+        let key = "\(message.id)|\(message.bodyText.utf8.count)"
         if let hit = cache[key] { return hit }
         if cache.count > 2_000 { cache.removeAll() }
         let raw = message.bodyText.isEmpty ? message.snippet : message.bodyText
@@ -894,13 +884,29 @@ struct MessageText {
     }
 }
 
+/// 「邮件里有没有远程图片」的判断结果缓存：这个判断是对整段 HTML 跑正则，卡片每次重绘都要问一遍。
+@MainActor
+enum RemoteImageCache {
+    private static var cache: [String: Bool] = [:]
+
+    static func has(_ html: String, key id: String) -> Bool {
+        let key = "\(id)|\(html.utf8.count)"
+        if let hit = cache[key] { return hit }
+        if cache.count > 2_000 { cache.removeAll() }
+        let result = HTMLBodyView.hasRemoteImages(html)
+        cache[key] = result
+        return result
+    }
+}
+
 /// 给网页正文打高亮标记的结果，按「内容 + 搜索词」缓存：卡片每次重绘都要用。
 @MainActor
 enum HitCache {
     private static var cache: [String: (html: String, count: Int)] = [:]
 
-    static func marked(_ html: String, query: String) -> (html: String, count: Int) {
-        let key = "\(query)|\(html.count)|\(html.hashValue)"
+    /// key：能代表这段网页内容的标识（邮件 id + 显示方式）。不拿整段 HTML 做键：每次重绘都要对几十 KB 的字符串算一遍哈希。
+    static func marked(_ html: String, query: String, key id: String) -> (html: String, count: Int) {
+        let key = "\(query)|\(id)|\(html.utf8.count)"
         if let hit = cache[key] { return hit }
         if cache.count > 400 { cache.removeAll() }
         let result = SearchHighlight.markHTML(html, query: query)
