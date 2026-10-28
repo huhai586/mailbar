@@ -169,6 +169,11 @@ public final class MailStore: @unchecked Sendable {
         }
         registerAssistantMigrations(&migrator)
         registerPendingMigrations(&migrator)
+        migrator.registerMigration("v16-row-detail-indexes") { db in
+            // 列表每一行的「最近一封真人邮件」「PR 标题」子查询：没有这两个索引时会扫全部真人邮件，「所有邮件」列表慢四倍
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS message_thread_kind_date ON message (threadId, kind, internalDate)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS message_pr_source_date ON message (prKey, source, internalDate)")
+        }
         return migrator
     }
 

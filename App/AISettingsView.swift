@@ -39,6 +39,20 @@ struct AISettingsView: View {
                 Text("隐私：判断时会把邮件的来源、发件人、主题和正文前 1200 字发给你选的服务。邮件内容敏感的话，建议选本机 Ollama / LM Studio。")
                     .font(.caption).foregroundStyle(.secondary)
 
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("摘要 prompt")
+                        Spacer()
+                        Button("恢复默认") { config.summaryPrompt = AIAssistant.defaultSummaryPrompt }
+                            .disabled(config.summaryPrompt == AIAssistant.defaultSummaryPrompt)
+                    }
+                    TextEditor(text: $config.summaryPrompt)
+                        .font(.system(size: 12, design: .monospaced))
+                        .frame(height: 130)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+                    Text("邮件详情顶部「AI 摘要」用的要求。AI 能看到这封邮件或整个 PR 的全部往来（例行机器人消息压成一行，超长时保留最新的约 6 万字）。改了之后，再打开的邮件会按新要求重新生成。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Toggle("打开 PR / 会话时自动生成 AI 摘要", isOn: $config.autoSummarize)
                     .disabled(config.providers.isEmpty)
                 Text("默认关闭：摘要只在你点「生成」时才调用 AI。打开后每个有新动静的 PR 第一次打开时会自动生成一次（结果缓存在本地，新邮件来了才重新生成）。")

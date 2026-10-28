@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        HTMLBodyView.prewarm()   // 提前启动网页渲染进程，第一次打开邮件不用等
         service.notifier.onOpenThread = { [weak self] threadId in
             self?.showMainWindow(mailbox: threadId == nil ? nil : .allMail, threadId: threadId)   // 点通知：侧栏直接定位到「所有邮件」
         }

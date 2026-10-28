@@ -64,6 +64,8 @@ public struct ThreadSummary: Identifiable, Equatable, Sendable {
     /// 最近一封真人邮件的发件人和时间（最新一封往往是机器人，真人的动静更值得看）
     public let lastHumanFrom: String?
     public let lastHumanDate: Date?
+    /// 列表里的正文概览：最近一封真人邮件的开头（没有真人就用最新一封），去掉了 GitHub 固定的开场白
+    public let preview: String
 
     public var isUnread: Bool { unreadCount > 0 }
 
@@ -150,6 +152,8 @@ extension MailStore {
         }
     }
 
+    /// 先在聚合子查询里排序分页，只对这一页的分组算「最近真人 / PR 标题 / 命中规则」这些逐行子查询；
+    /// 放在外层分页时 SQLite 会对所有分组都算一遍再排序（「所有邮件」里慢一倍以上）。
     static func fetchThreads(_ db: Database, in mailbox: Mailbox, search: String?, unreadOnly: Bool, source: String?,
                              groupByPR: Bool, limit: Int, offset: Int) throws -> [ThreadSummary] {
         let key = groupByPR ? "COALESCE(prKey, threadId)" : "threadId"
@@ -179,6 +183,8 @@ extension MailStore {
                         ORDER BY g.internalDate DESC LIMIT 1) AS lastHumanFrom,
                        (SELECT g.internalDate FROM message g WHERE \(gKey) = \(mKey) AND g.kind = 'human'
                         ORDER BY g.internalDate DESC LIMIT 1) AS lastHumanDate,
+                       (SELECT g.snippet FROM message g WHERE \(gKey) = \(mKey) AND g.kind = 'human'
+                        ORDER BY g.internalDate DESC LIMIT 1) AS humanSnippet,
                        (SELECT g.subject FROM message g WHERE m.prKey IS NOT NULL AND g.prKey = m.prKey AND g.source = 'github'
                         ORDER BY g.internalDate DESC LIMIT 1) AS prSubject,
                        (SELECT group_concat(DISTINCT r.ruleName) FROM rule_match r
@@ -193,10 +199,10 @@ extension MailStore {
                            \(Self.kindAggregates),
                            CASE WHEN \(prGroup) THEN 'github' ELSE MAX(source) END AS gsource
                     FROM message WHERE \(whereSQL) GROUP BY gk \(having)
+                    ORDER BY maxDate DESC LIMIT ? OFFSET ?
                 ) t ON \(mKey) = t.gk AND m.internalDate = t.maxDate
                 GROUP BY \(mKey)
                 ORDER BY m.internalDate DESC
-                LIMIT ? OFFSET ?
                 """, arguments: arguments).map { row in
                 ThreadSummary(id: row["groupKey"], latestMessageId: row["id"], latestThreadId: row["threadId"],
                               threadCount: row["distinctThreads"], ciFailures: row["ciCount"], prKey: row["prKey"],
@@ -211,7 +217,8 @@ extension MailStore {
                               alertCount: row["alertCount"], alertUnread: row["alertUnread"],
                               routineCount: row["routineCount"], routineUnread: row["routineUnread"],
                               reasons: ((row["reasonList"] as String?) ?? "").split(separator: ",").map(String.init).sorted(),
-                              lastHumanFrom: row["lastHumanFrom"], lastHumanDate: (row["lastHumanDate"] as Int64?).map(Self.date))
+                              lastHumanFrom: row["lastHumanFrom"], lastHumanDate: (row["lastHumanDate"] as Int64?).map(Self.date),
+                              preview: SnippetText.preview(row["humanSnippet"] ?? row["snippet"]))
             }
     }
 

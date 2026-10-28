@@ -85,7 +85,7 @@ private struct GeneralSettingsView: View {
                 Text("相对默认字号整体放大或缩小，包括邮件正文。")
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("正文使用等宽字体", isOn: $monoBody)
-                Toggle("没有标签的邮件在列表里显示摘要", isOn: $showSnippets)
+                Toggle("列表里显示正文概览（最近一条真人回复的开头）", isOn: $showSnippets)
             }
 
             Section("同步") {

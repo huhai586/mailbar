@@ -40,11 +40,18 @@ public struct AIThreadSummary: Codable, Equatable, Sendable {
 
 /// 把一个会话 / PR 里的邮件整理成给 AI 读的文字：跳过例行机器人，去掉引用，限制总长度（保留最新的）。
 enum AITranscript {
-    static func make(_ messages: [MessageDetail], budget: Int = 12_000, perMessage: Int = 1_200) -> String {
-        let routine = messages.filter { $0.kind == MessageKind.botRoutine.rawValue }.count
+    /// includeRoutine 为 true 时例行机器人消息也带上，但每条只留一行（「全部内容」用于邮件摘要）。
+    static func make(_ messages: [MessageDetail], budget: Int = 12_000, perMessage: Int = 1_200, includeRoutine: Bool = false) -> String {
+        let routine = includeRoutine ? 0 : messages.filter { $0.kind == MessageKind.botRoutine.rawValue }.count
         var blocks: [String] = []
-        for message in messages where message.kind != MessageKind.botRoutine.rawValue {
-            blocks.append("[\(DateText.full(message.date))] \(message.from)（\(label(message.kind))）\n\(clean(message.bodyText, limit: perMessage))")
+        for message in messages {
+            let header = "[\(DateText.full(message.date))] \(message.from)（\(label(message.kind))）"
+            if message.kind == MessageKind.botRoutine.rawValue {
+                guard includeRoutine else { continue }
+                blocks.append("\(header) \(clean(message.bodyText, limit: 160).split(separator: "\n").first.map(String.init) ?? message.snippet)")
+            } else {
+                blocks.append("\(header)\n\(clean(message.bodyText.isEmpty ? message.snippet : message.bodyText, limit: perMessage))")
+            }
         }
         var kept: [String] = []
         var used = 0
@@ -63,6 +70,7 @@ enum AITranscript {
         switch kind {
         case MessageKind.human.rawValue: return "真人"
         case MessageKind.botAlert.rawValue: return "机器人·出问题"
+        case MessageKind.botRoutine.rawValue: return "例行机器人"
         default: return "机器人"
         }
     }
@@ -214,14 +222,24 @@ public struct AIAssistant: Sendable {
 
     // MARK: 线程摘要
 
-    public func summarize(title: String, messages: [MessageDetail]) async throws -> AIThreadSummary {
-        let system = """
-        \(preamble)
-        下面是一个 PR 或邮件会话的往来内容。请只回复一个 JSON 对象，不要任何别的文字：
-        {"summary": "2-3 句话讲清楚发生了什么、讨论的结论", "status": "一句话：当前进展，或卡在哪里", "todos": ["需要用户本人去做的事，没有就给空数组"]}
-        待办只写确实需要用户（不是别人）去做的事：被请求 review、被问了问题、CI 失败需要处理、被要求修改等。
-        """
-        let user = "标题：\(title)\n\n\(AITranscript.make(messages))"
+    /// 默认的摘要要求（设置 → AI 里可以改）。输出格式由程序另外追加，改 prompt 不会弄坏解析。
+    public static let defaultSummaryPrompt = """
+    下面是一封邮件，或一个 PR / 会话的全部往来内容（按时间顺序）。请帮我总结：
+    - summary：讲清楚这件事是什么、发生了什么、讨论的结论；内容多时可以分几条，用 Markdown 列表
+    - status：一句话说当前进展，或者卡在哪里
+    - todos：确实需要我本人去做的事（被请求 review、被问了问题、CI 失败需要处理、被要求修改等），没有就给空数组
+    机器人的例行消息（质量检查通过、测试汇总等）一般不用提，除非它们说明了问题。
+    """
+
+    static let summaryContract = """
+
+    只回复一个 JSON 对象，不要任何别的文字：{"summary": "……", "status": "……", "todos": ["……"]}
+    """
+
+    /// 总结一封邮件或一个 PR / 会话。AI 看到的是全部邮件（例行机器人消息压成一行），太长时保留最新的。
+    public func summarize(title: String, messages: [MessageDetail], prompt: String = AIAssistant.defaultSummaryPrompt) async throws -> AIThreadSummary {
+        let system = "\(preamble)\n\(prompt)\(Self.summaryContract)"
+        let user = "标题：\(title)\n\n\(AITranscript.make(messages, budget: 60_000, perMessage: 6_000, includeRoutine: true))"
         let reply = try await chat.complete(system: system, user: user)
         guard let summary = Self.decode(AIThreadSummary.self, from: reply) else {
             throw MailError.config("AI 的回复无法解析: \(reply.prefix(120))")

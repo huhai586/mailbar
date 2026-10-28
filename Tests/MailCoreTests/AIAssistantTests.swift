@@ -66,6 +66,19 @@ private func detail(_ id: String, kind: String = "human", from: String = "bob", 
         #expect(script.seen[0].messages[0].content.contains("标题：PR 标题"))
     }
 
+    @Test func summarizeUsesTheConfiguredPromptAndSeesEverything() async throws {
+        let (ai, script) = assistant([#"{"summary":"s","status":"","todos":[]}"#])
+        _ = try await ai.summarize(title: "t", messages: [
+            detail("1", body: "真人的长评论 " + String(repeating: "x", count: 3_000)),
+            detail("2", kind: "bot_routine", from: "sonar", body: "Quality Gate passed\nmore lines"),
+        ], prompt: "我的总结要求")
+        let system = script.seen[0].system
+        #expect(system.contains("我的总结要求") && system.contains("JSON"))
+        let user = script.seen[0].messages[0].content
+        #expect(user.contains(String(repeating: "x", count: 3_000)))      // 长评论不再截到 1200 字
+        #expect(user.contains("Quality Gate passed") && !user.contains("more lines"))   // 例行消息也在，但只留一行
+    }
+
     @Test func summarizeFailsOnGarbage() async {
         let (ai, _) = assistant(["不知道"])
         await #expect(throws: MailError.self) { try await ai.summarize(title: "t", messages: []) }

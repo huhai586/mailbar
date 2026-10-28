@@ -114,10 +114,9 @@ enum Theme {
         fontSet.sans(max(9, size + fontOffset), weight)
     }
 
-    /// 标题字体：深色（终端）用无衬线，浅色（纸质）用衬线；等宽留给元信息和编号。
+    /// 标题字体：跟随字体套装的正文字体，深色 / 浅色主题一样（字体设置全局统一）。
     static func title(_ size: CGFloat, _ weight: Font.Weight = .regular, scheme: ColorScheme) -> Font {
-        scheme == .dark ? fontSet.sans(max(9, size + fontOffset), weight)
-                        : .system(size: max(9, size + 2 + fontOffset), weight: weight, design: .serif)
+        fontSet.sans(max(9, size + fontOffset), weight)
     }
 
     static let radius: CGFloat = 6

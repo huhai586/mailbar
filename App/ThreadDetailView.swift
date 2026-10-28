@@ -521,20 +521,13 @@ private struct MessageCard: View {
 
     private var sender: MailAddress { MailAddress.parse(message.from) }
 
-    /// 正文文本（GitHub 通知去掉页脚）。
-    private var plainText: String {
-        let text = message.bodyText.isEmpty ? message.snippet : message.bodyText
-        return message.isGitHubNotification ? GitHubText.stripFooter(text) : text
-    }
-
+    /// 正文的各种整理结果（去页脚、CI 摘要、是否像 Markdown……）每封邮件只算一次。
+    private var text: MessageText { MessageText.of(message) }
+    private var plainText: String { text.plain }
     /// GitHub 通知的页脚（"You are receiving this because you were mentioned."）：正文里不放，单独以小字显示在卡片底部。
-    private var footerNote: String? {
-        guard message.isGitHubNotification else { return nil }
-        return GitHubText.footerNote(message.bodyText.isEmpty ? message.snippet : message.bodyText)
-    }
-
+    private var footerNote: String? { text.footer }
     /// CI 失败通知：几十行任务清单只留失败的，按原文显示。
-    private var digest: String? { message.isGitHubNotification ? GitHubText.ciDigest(plainText) : nil }
+    private var digest: String? { text.digest }
 
     private var availableModes: [BodyMode] {
         var modes: [BodyMode] = []
@@ -549,7 +542,7 @@ private struct MessageCard: View {
         if digest != nil { return .text }
         if message.isGitHubNotification, githubText, !plainText.isEmpty { return renderMarkdown ? .markdown : .text }
         if message.bodyHtml != nil { return .html }
-        if renderMarkdown, MarkdownRenderer.looksLikeMarkdown(plainText) { return .markdown }
+        if renderMarkdown, text.looksLikeMarkdown { return .markdown }
         return .text
     }
 
@@ -644,14 +637,7 @@ private struct MessageCard: View {
     }
 
     /// 折叠时的一行预览：去掉行首的 Markdown 标记。
-    private var previewLine: String {
-        let source = digest ?? plainText
-        // GitHub 评论邮件的第一行总是 "xxx left a comment (owner/repo#123)"，没有信息量，预览取后面的内容
-        let line = source.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
-            .first { !$0.isEmpty && !$0.contains(" left a comment (") && !$0.hasPrefix("<!--") } ?? message.snippet
-        let cleaned = line.drop { "#>*-|` ".contains($0) }.replacingOccurrences(of: "**", with: "")
-        return String(cleaned.prefix(160))
-    }
+    private var previewLine: String { text.preview }
 
     /// 在可用的显示方式之间循环：MD → 原文 → HTML。
     private var formatToggle: some View {
@@ -703,6 +689,44 @@ private struct MessageCard: View {
             }
             HTMLBodyView(html: html, allowRemoteImages: allowRemote, dark: dark, style: style, height: $htmlHeight)
                 .frame(height: htmlHeight)
+                .onAppear {
+                    if let cached = HTMLBodyView.heightCache[HTMLBodyView.heightKey(html: html, dark: dark, style: style)] { htmlHeight = cached }
+                }
         }
+    }
+}
+
+/// 一封邮件正文的整理结果。卡片每次重绘都要用好几次，按邮件缓存，只算一次。
+struct MessageText {
+    let plain: String
+    let footer: String?
+    let digest: String?
+    let preview: String
+    let looksLikeMarkdown: Bool
+
+    @MainActor private static var cache: [String: MessageText] = [:]
+
+    @MainActor static func of(_ message: MessageDetail) -> MessageText {
+        let key = "\(message.id)|\(message.bodyText.count)"
+        if let hit = cache[key] { return hit }
+        if cache.count > 2_000 { cache.removeAll() }
+        let raw = message.bodyText.isEmpty ? message.snippet : message.bodyText
+        let plain = message.isGitHubNotification ? GitHubText.stripFooter(raw) : raw
+        let digest = message.isGitHubNotification ? GitHubText.ciDigest(plain) : nil
+        let made = MessageText(plain: plain,
+                               footer: message.isGitHubNotification ? GitHubText.footerNote(raw) : nil,
+                               digest: digest,
+                               preview: previewLine(digest ?? plain, fallback: message.snippet),
+                               looksLikeMarkdown: MarkdownRenderer.looksLikeMarkdown(plain))
+        cache[key] = made
+        return made
+    }
+
+    /// GitHub 评论邮件的第一行总是 "xxx left a comment (owner/repo#123)"，没有信息量，预览取后面的内容；去掉行首的 Markdown 标记。
+    static func previewLine(_ source: String, fallback: String) -> String {
+        let line = source.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            .first { !$0.isEmpty && !$0.contains(" left a comment (") && !$0.hasPrefix("<!--") } ?? fallback
+        let cleaned = line.drop { "#>*-|` ".contains($0) }.replacingOccurrences(of: "**", with: "")
+        return String(cleaned.prefix(160))
     }
 }

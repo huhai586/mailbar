@@ -340,7 +340,9 @@ struct AISummaryCard: View {
     @State private var added: Set<String> = []
 
     private var latestID: String { messages.last?.id ?? "" }
-    private var token: String { "\(groupKey)|\(latestID)" }
+    /// 缓存键：最新一封邮件 + 摘要 prompt。来了新邮件、或者改了 prompt，都要重新生成
+    private var cacheVersion: String { "\(latestID)|\(AIConfigStore.read().summaryPrompt.hashValue)" }
+    private var token: String { "\(groupKey)|\(cacheVersion)" }
     /// 只有真人或出问题的机器人消息才值得摘要；整个会话只有例行机器人时没什么可总结
     private var summarizable: Bool { messages.contains { $0.kind != MessageKind.botRoutine.rawValue } }
 
@@ -358,7 +360,7 @@ struct AISummaryCard: View {
                     }
                 }
                 if let summary {
-                    Text(summary.summary).font(Theme.ui(13)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)
+                    AssistantText(text: summary.summary, reader: reader, service: reader.service)
                     if !summary.status.isEmpty {
                         Text("进展：" + summary.status).font(Theme.ui(12)).foregroundStyle(Theme.muted)
                     }
@@ -396,7 +398,7 @@ struct AISummaryCard: View {
     /// 先读缓存；没有缓存且设置了「自动生成」才联网。
     private func load() async {
         guard !latestID.isEmpty, let store = reader.service.store else { return }
-        summary = try? store.aiSummary(group: groupKey, latestMessageId: latestID)
+        summary = try? store.aiSummary(group: groupKey, latestMessageId: cacheVersion)
         added = Set(((try? store.todos()) ?? []).filter { $0.groupKey == groupKey }.map(\.text))
         error = nil
         if summary == nil, AIConfigStore.read().autoSummarize, attempted != token { generate() }
@@ -410,14 +412,14 @@ struct AISummaryCard: View {
 
     private func generate() {
         guard !loading, let assistant = reader.makeAssistant(), let store = reader.service.store else { return }
-        let key = groupKey, latest = latestID, messages = messages, title = title
+        let key = groupKey, latest = cacheVersion, messages = messages, title = title
         attempted = token
         loading = true
         error = nil
         Task {
             defer { loading = false }
             do {
-                let result = try await assistant.summarize(title: title, messages: messages)
+                let result = try await assistant.summarize(title: title, messages: messages, prompt: AIConfigStore.read().summaryPrompt)
                 try? store.saveAISummary(result, group: key, latestMessageId: latest)
                 if key == groupKey { summary = result }
             } catch {

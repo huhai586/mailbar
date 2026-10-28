@@ -22,15 +22,34 @@ struct HTMLBodyView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .nonPersistent()
-        config.defaultWebpagePreferences.allowsContentJavaScript = false
-        let view = PassthroughWebView(frame: .zero, configuration: config)
+        let view = PassthroughWebView(frame: .zero, configuration: Self.makeConfiguration())
         view.navigationDelegate = context.coordinator
         view.setValue(false, forKey: "drawsBackground")
         view.postsFrameChangedNotifications = true
         context.coordinator.observe(view)
         return view
+    }
+
+    /// 量过的高度，按内容记住：再次打开同一封邮件时直接用最终高度排版，不会先 160 再跳到实际高度。
+    @MainActor static var heightCache: [String: CGFloat] = [:]
+
+    static func heightKey(html: String, dark: Bool, style: Style) -> String { "\(dark)|\(style)|\(html.hashValue)" }
+
+    /// 启动时先建一个看不见的网页视图：网页内容进程启动要几百毫秒，提前热好，第一次打开邮件就不用等。
+    @MainActor private static var warmView: WKWebView?
+    @MainActor static func prewarm() {
+        guard warmView == nil else { return }
+        let view = WKWebView(frame: .zero, configuration: makeConfiguration())
+        view.loadHTMLString(document(for: "", allowRemoteImages: false, dark: false, style: .markdown), baseURL: nil)
+        warmView = view
+    }
+
+    static func makeConfiguration() -> WKWebViewConfiguration {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+        config.defaultWebpagePreferences.allowsContentJavaScript = false
+        config.setURLSchemeHandler(FontSchemeHandler.shared, forURLScheme: FontSchemeHandler.scheme)
+        return config
     }
 
     func updateNSView(_ view: WKWebView, context: Context) {
@@ -44,6 +63,8 @@ struct HTMLBodyView: NSViewRepresentable {
     static func document(for body: String, allowRemoteImages: Bool, dark: Bool, style: Style = .email) -> String {
         // CSP 先于邮件内容生效：默认只允许内嵌的 data: 图片，不发起任何网络请求；表单一律不能提交
         let images = allowRemoteImages ? "data: https: http:" : "data:"
+        // 邮件正文也用设置里的字体套装（全局统一）
+        let fonts = Theme.fontSet.css
         // 深色：整页反色再转回色相，图片和视频再反一次保持原样
         let darkCSS = dark ? """
           html { background: #f0f3f6; color: #1d1d1f; filter: invert(1) hue-rotate(180deg); }
@@ -51,13 +72,14 @@ struct HTMLBodyView: NSViewRepresentable {
         """ : "html { background: #fff; color: #1d1d1f; }"
         return """
         <!doctype html><html><head><meta charset="utf-8">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src \(images); style-src 'unsafe-inline'; font-src data:; form-action 'none'">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src \(images); style-src 'unsafe-inline'; font-src data: \(FontSchemeHandler.scheme):; form-action 'none'">
         <base target="_blank">
         <style>
+          \(fonts.faces)
           \(style == .markdown ? markdownCSS(dark: dark) : darkCSS)
-          body { font: \(Theme.bodyPx)px/1.55 -apple-system, "PingFang SC", sans-serif; margin: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
+          body { font: \(Theme.bodyPx)px/1.55 \(fonts.sans); margin: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
           img { max-width: 100%; height: auto; }
-          pre, code { white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+          pre, code { white-space: pre-wrap; font-family: \(fonts.mono); }
           table { max-width: 100%; }
         </style></head><body>\(body)</body></html>
         """
@@ -71,7 +93,7 @@ struct HTMLBodyView: NSViewRepresentable {
         return """
           :root { color-scheme: \(c.scheme); }
           html { background: transparent; color: \(c.text); }
-          body { font: \(Theme.bodyPx)px/1.6 -apple-system, "PingFang SC", sans-serif; margin: 0; padding: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
+          body { font: \(Theme.bodyPx)px/1.6 \(Theme.fontSet.css.sans); margin: 0; padding: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
           a { color: \(c.link); text-decoration: none; }
           a:hover { text-decoration: underline; }
           h1, h2, h3, h4, h5 { margin: 18px 0 8px; font-weight: 600; line-height: 1.25; }
@@ -83,7 +105,7 @@ struct HTMLBodyView: NSViewRepresentable {
           ul, ol { padding-left: 2em; }
           li + li { margin-top: .2em; }
           blockquote { margin-left: 0; padding: 0 1em; color: \(c.muted); border-left: .25em solid \(c.border); }
-          code { font: 12.5px ui-monospace, "SF Mono", Menlo, monospace; background: \(c.codeBg); padding: .15em .4em; border-radius: 6px; }
+          code { font: 12.5px \(Theme.fontSet.css.mono); background: \(c.codeBg); padding: .15em .4em; border-radius: 6px; }
           pre { background: \(c.preBg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; }
           pre code { background: none; padding: 0; font-size: 12px; }
           table { border-collapse: collapse; font-size: 12.5px; max-width: 100%; }
@@ -138,6 +160,9 @@ struct HTMLBodyView: NSViewRepresentable {
                 DispatchQueue.main.async {
                     // 测不到时给个固定高度兜底
                     let target = max(40, ceil(measured ?? 480))
+                    if measured != nil {
+                        HTMLBodyView.heightCache[HTMLBodyView.heightKey(html: self.parent.html, dark: self.parent.dark, style: self.parent.style)] = target
+                    }
                     if abs(self.parent.height - target) > 1 { self.parent.height = target }
                 }
             }

@@ -139,6 +139,27 @@ struct ThreadListView: View {
         .buttonStyle(PlainPointerButtonStyle())
     }
 
+    /// 同一天（按最后更新时间）的会话。
+    struct DayGroup: Identifiable {
+        let id: String
+        let title: String
+        let threads: [ThreadSummary]
+
+        static func make(_ threads: [ThreadSummary]) -> [DayGroup] {
+            var groups: [DayGroup] = []
+            for thread in threads {
+                let key = DateText.dayKey(thread.date)
+                if groups.last?.id == key {
+                    let last = groups.removeLast()
+                    groups.append(DayGroup(id: key, title: last.title, threads: last.threads + [thread]))
+                } else {
+                    groups.append(DayGroup(id: key, title: DateText.day(thread.date), threads: [thread]))
+                }
+            }
+            return groups
+        }
+    }
+
     /// 行的标识里带上会变的状态：已读 / 未读变了就换一个新的行视图。
     /// 只用 thread.id 时，LazyVStack 在「行换了位置、内容同时变了」时会继续显示旧内容（标成已读后那一行还是未读的样子）。
     static func rowKey(_ t: ThreadSummary) -> String {
@@ -150,10 +171,13 @@ struct ThreadListView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                     let rules = reader.rulesByName
                     let visible = reader.visibleThreads
-                    ForEach(reader.threads) { thread in
+                    // 按最后更新的日期分组：今天 / 昨天 / 星期一 10月26日……组标题吸顶，一眼分清新旧
+                    ForEach(DayGroup.make(reader.threads)) { group in
+                    Section {
+                    ForEach(group.threads) { thread in
                         // 外层按 thread.id 认行（滚动定位用），里层按状态认：已读 / 未读一变就换新的行视图，
                         // 不然 LazyVStack 在「行的位置和内容同时变」时会继续显示旧内容
                         VStack(spacing: 0) {
@@ -176,6 +200,11 @@ struct ThreadListView: View {
                             }
                             .onAppear { if thread.id == visible.last?.id { reader.loadMore() } }
                     }
+                    } header: {
+                        DayHeader(title: group.title, count: group.threads.count, unread: group.threads.filter(\.isUnread).count)
+                            .id("day-\(group.id)")
+                    }
+                    }
                     if !reader.threads.isEmpty, !reader.hasMore, reader.searchText.isEmpty { olderFooter }
                 }
                 .scrollTargetLayout()
@@ -183,7 +212,12 @@ struct ThreadListView: View {
             // 新邮件到了不打乱正在看的位置：停在最顶上时跟着显示最新的；往下翻着时，眼前这一行保持不动
             .scrollPosition(id: $topRowID, anchor: .top)
             .onChange(of: reader.threads.map(\.id)) { old, new in
-                if topRowID == nil || topRowID == old.first { topRowID = new.first }
+                // 停在最顶上（或还没滚动过）：新邮件来了就回到顶部，连同「今天」的标题一起露出来；
+                // 往下翻着时不动它，scrollPosition 会让眼前那一行保持在原处
+                guard topRowID == nil || topRowID == old.first, let first = new.first,
+                      let day = reader.threads.first.map({ DateText.dayKey($0.date) }) else { return }
+                _ = first
+                DispatchQueue.main.async { proxy.scrollTo("day-\(day)", anchor: .top) }
             }
             .focusable()
             .focusEffectDisabled()
@@ -371,6 +405,14 @@ private struct ThreadRow: View {
                     if thread.hasAttachments { Image(systemName: "paperclip").font(.system(size: 10)).foregroundStyle(Theme.faint) }
                 }
                 // PR 行不需要这一行（标题已经够认；仓库 / 编号 / 发件人点进去就能看到）；非 PR 的邮件靠发件人认
+                // 正文概览：最近一封真人邮件的开头，扫一眼就知道说了什么
+                if showSnippet, !thread.preview.isEmpty {
+                    Text(thread.preview)
+                        .font(Theme.ui(12))
+                        .foregroundStyle(unread ? Theme.muted : Theme.faint)
+                        .lineLimit(2)
+                        .padding(.leading, 13)
+                }
                 if !isPR { metaLine(info).padding(.leading, 13) }
                 if isPR { commentsLine(info).padding(.leading, 13) }
             }
@@ -400,5 +442,25 @@ private struct ThreadRow: View {
             .font(Theme.mono(11, thread.humanUnread > 0 ? .medium : .regular))
             .foregroundStyle(thread.humanUnread > 0 ? Theme.muted : Theme.faint)
             .lineLimit(1).truncationMode(.middle)
+    }
+}
+
+/// 列表里的日期分隔：吸顶的小标题 + 一条横线，后面是这一天有几个会话、几个未读。
+private struct DayHeader: View {
+    let title: String
+    let count: Int
+    let unread: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title).font(Theme.ui(11.5, .semibold)).foregroundStyle(title == "今天" ? Theme.accent : Theme.muted)
+            Text(unread > 0 ? "\(count) · \(unread) 未读" : "\(count)").font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
+            Rectangle().fill(Theme.border).frame(height: 1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, Theme.pad(10))
+        .padding(.bottom, Theme.pad(6))
+        .frame(maxWidth: .infinity)
+        .background(Theme.bg)     // 吸顶时盖住下面滚过去的行，必须不透明
     }
 }

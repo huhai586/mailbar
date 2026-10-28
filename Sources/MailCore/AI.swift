@@ -52,6 +52,8 @@ public struct AIConfig: Codable, Equatable, Sendable {
     public var notifyPrompt: String = AINotifyJudge.defaultPrompt
     /// 打开一个 PR / 会话时自动生成 AI 摘要（默认关：每次打开都会调用一次 AI）
     public var autoSummarize = false
+    /// 邮件 / PR 摘要的要求
+    public var summaryPrompt: String = AIAssistant.defaultSummaryPrompt
     /// 每天固定时间自动生成「今日简报」并通知
     public var briefAuto = false
     public var briefHour = 9
@@ -69,6 +71,7 @@ public struct AIConfig: Codable, Equatable, Sendable {
         notifyEnabled = try c.decodeIfPresent(Bool.self, forKey: .notifyEnabled) ?? false
         notifyPrompt = try c.decodeIfPresent(String.self, forKey: .notifyPrompt) ?? AINotifyJudge.defaultPrompt
         autoSummarize = try c.decodeIfPresent(Bool.self, forKey: .autoSummarize) ?? false
+        summaryPrompt = try c.decodeIfPresent(String.self, forKey: .summaryPrompt) ?? AIAssistant.defaultSummaryPrompt
         briefAuto = try c.decodeIfPresent(Bool.self, forKey: .briefAuto) ?? false
         briefHour = try c.decodeIfPresent(Int.self, forKey: .briefHour) ?? 9
         briefMinute = try c.decodeIfPresent(Int.self, forKey: .briefMinute) ?? 0
