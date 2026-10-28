@@ -18,6 +18,10 @@ struct HTMLBodyView: NSViewRepresentable {
     let dark: Bool
     var style: Style = .email
     @Binding var height: CGFloat
+    /// 搜索高亮里当前选中的是第几处（html 里已经用 SearchHighlight.markHTML 标好了 <mark class="mb-hit">）
+    var currentHit: Int?
+    /// 每处高亮离网页顶部多远：外面据此把滚动对准某一处
+    var onHitOffsets: (([CGFloat]) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -55,7 +59,10 @@ struct HTMLBodyView: NSViewRepresentable {
     func updateNSView(_ view: WKWebView, context: Context) {
         context.coordinator.parent = self
         let key = "\(allowRemoteImages)|\(dark)|\(style)|\(html.hashValue)"
-        guard context.coordinator.loadedKey != key else { return }
+        guard context.coordinator.loadedKey != key else {
+            context.coordinator.applyCurrentHit(view)
+            return
+        }
         context.coordinator.loadedKey = key
         view.loadHTMLString(Self.document(for: html, allowRemoteImages: allowRemoteImages, dark: dark, style: style), baseURL: nil)
     }
@@ -81,6 +88,8 @@ struct HTMLBodyView: NSViewRepresentable {
           img { max-width: 100%; height: auto; }
           pre, code { white-space: pre-wrap; font-family: \(fonts.mono); }
           table { max-width: 100%; }
+          mark.mb-hit { background: rgba(255, 199, 0, 0.45); color: inherit; border-radius: 2px; padding: 0 1px; }
+          mark.mb-hit.mb-cur { background: rgb(255, 150, 50); color: #000; box-shadow: 0 0 0 2px rgba(255, 150, 50, 0.6); }
         </style></head><body>\(body)</body></html>
         """
     }
@@ -143,7 +152,19 @@ struct HTMLBodyView: NSViewRepresentable {
             }
         }
 
+        private var appliedHit: Int?? = .none
+
+        /// 把「当前这一处」的样式切到第 n 个高亮上（应用自己执行的脚本，不受网页禁用脚本的影响）。
+        func applyCurrentHit(_ webView: WKWebView) {
+            guard appliedHit != .some(parent.currentHit) else { return }
+            appliedHit = .some(parent.currentHit)
+            let index = parent.currentHit ?? -1
+            webView.evaluateJavaScript("document.querySelectorAll('mark.mb-hit').forEach((e,i)=>e.classList.toggle('mb-cur', i===\(index)))")
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            appliedHit = .none
+            applyCurrentHit(webView)
             measure(webView)
             // 远程图片陆续加载完会再撑高
             for delay in [0.5, 1.5, 4.0] {
@@ -154,6 +175,12 @@ struct HTMLBodyView: NSViewRepresentable {
         }
 
         func measure(_ webView: WKWebView) {
+            if parent.onHitOffsets != nil {
+                webView.evaluateJavaScript("Array.from(document.querySelectorAll('mark.mb-hit')).map(e => e.getBoundingClientRect().top + window.scrollY)") { [weak self] result, _ in
+                    guard let self, let values = result as? [Double] else { return }
+                    DispatchQueue.main.async { self.parent.onHitOffsets?(values.map { CGFloat($0) }) }
+                }
+            }
             webView.evaluateJavaScript("Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)") { [weak self] result, _ in
                 guard let self else { return }
                 let measured = (result as? Double).map { CGFloat($0) }

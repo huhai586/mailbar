@@ -111,7 +111,28 @@ private struct WindowConfigurator: NSViewRepresentable {
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
         installZoomOnDoubleClick(for: window)
+        redirectCloseToMinimize(window)
     }
+
+    /// 红色关闭按钮和 ⌘W 都改成最小化到 Dock，而不是关掉窗口：窗口留在 Dock 里，点一下就回来，应用也始终在运行。
+    /// 退出请用菜单栏图标里的「退出」或 ⌘Q。
+    private static func redirectCloseToMinimize(_ window: NSWindow) {
+        guard let button = window.standardWindowButton(.closeButton), !(button.target is CloseToMinimize) else { return }
+        let handler = CloseToMinimize(window)
+        objc_setAssociatedObject(button, &CloseToMinimize.key, handler, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        button.target = handler
+        button.action = #selector(CloseToMinimize.minimize)
+        if closeKeyMonitor == nil {
+            closeKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak window] event in
+                guard let window, event.window === window, event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                      event.charactersIgnoringModifiers == "w" else { return event }
+                window.miniaturize(nil)
+                return nil
+            }
+        }
+    }
+
+    private static var closeKeyMonitor: Any?
 
     private static var zoomMonitor: Any?
 
@@ -125,5 +146,15 @@ private struct WindowConfigurator: NSViewRepresentable {
             window.zoom(nil)
             return nil
         }
+    }
+}
+
+/// 红色关闭按钮的新动作：最小化。
+final class CloseToMinimize: NSObject {
+    static var key = 0
+    private weak var window: NSWindow?
+    init(_ window: NSWindow) { self.window = window }
+    @objc func minimize() {
+        window?.miniaturize(nil)
     }
 }

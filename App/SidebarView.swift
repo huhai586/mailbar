@@ -147,8 +147,8 @@ struct SidebarView: View {
                 Text(style.title == "文档" ? "Google 文档" : style.title)
                     .font(Theme.ui(12.5, selected ? .semibold : .regular)).foregroundStyle(selected ? Theme.text : Theme.text.opacity(0.88)).lineLimit(1)
                 Spacer(minLength: 4)
-                if count.unreadGroups > 0 { CountBadge(count: count.unreadGroups, color: Theme.muted) }
-                else { Text("\(count.groups)").font(Theme.mono(10.5)).foregroundStyle(Theme.faint) }
+                // 侧栏所有数字都只表示「有未读的会话 / PR 数」；没有未读就不显示，不再退回显示总数
+                CountBadge(count: count.unreadGroups, color: Theme.muted)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, Theme.pad(4.5))

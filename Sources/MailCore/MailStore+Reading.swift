@@ -218,7 +218,9 @@ extension MailStore {
                               routineCount: row["routineCount"], routineUnread: row["routineUnread"],
                               reasons: ((row["reasonList"] as String?) ?? "").split(separator: ",").map(String.init).sorted(),
                               lastHumanFrom: row["lastHumanFrom"], lastHumanDate: (row["lastHumanDate"] as Int64?).map(Self.date),
-                              preview: SnippetText.preview(row["humanSnippet"] ?? row["snippet"]))
+                              // 搜索时，这一行的最新邮件就是命中的那封：概览改成正文里命中关键字的那一段
+                              preview: search.flatMap { SearchHighlight.excerpt(row["bodyText"] ?? "", query: $0) }
+                                ?? SnippetText.preview(row["humanSnippet"] ?? row["snippet"]))
             }
     }
 

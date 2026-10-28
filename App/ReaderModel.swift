@@ -121,6 +121,10 @@ final class ReaderModel: ObservableObject {
 
     init(service: MailService) {
         self.service = service
+        #if DEBUG
+        // 调试用：`--args -search 关键字` 启动后直接带着搜索词，方便截图检查高亮
+        if let query = UserDefaults.standard.string(forKey: "search") { searchText = query }
+        #endif
 
         // $xxx 在值真正改变之前发出，所以先 receive(on:) 到下一轮再读属性
         $mailbox.dropFirst().removeDuplicates().receive(on: DispatchQueue.main).sink { [weak self] _ in
@@ -171,6 +175,12 @@ final class ReaderModel: ObservableObject {
         service.$navigation.compactMap { $0 }.receive(on: DispatchQueue.main).sink { [weak self] request in
             self?.apply(request)
         }.store(in: &cancellables)
+    }
+
+    /// 正在搜的词（去掉首尾空白）；没在搜返回 nil。列表和详情都用它高亮
+    var highlightQuery: String? {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return query.isEmpty ? nil : query
     }
 
     var rulesByName: [String: Rule] { Dictionary(service.rules.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first }) }

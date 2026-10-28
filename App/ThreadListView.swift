@@ -74,17 +74,17 @@ struct ThreadListView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
     }
 
-    /// 来源分类标签：全部 / GitHub / Jira / 文档 / 其他，数字是有未读的分组数（没有未读就显示总数）。
+    /// 来源分类标签：全部 / GitHub / Jira / 文档 / 其他，数字只表示有未读的分组数，没有未读就不显示数字。
     private var sourceTabs: some View {
         let counts = reader.sourceCounts
         let all = counts.values.reduce((groups: 0, unread: 0)) { ($0.groups + $1.groups, $0.unread + $1.unreadGroups) }
         return HStack(spacing: 4) {
-            tab("全部", icon: nil, color: Theme.muted, source: nil, number: all.unread > 0 ? all.unread : all.groups, highlight: all.unread > 0)
+            tab("全部", icon: nil, color: Theme.muted, source: nil, number: all.unread, highlight: true)
             ForEach(ReaderModel.sourceOrder, id: \.self) { source in
                 if let count = counts[source], count.groups > 0 {
                     let style = ReaderModel.style(forSource: source)
                     tab(style.title, icon: style.icon, color: Theme.color(named: style.color), source: source,
-                        number: count.unreadGroups > 0 ? count.unreadGroups : count.groups, highlight: count.unreadGroups > 0)
+                        number: count.unreadGroups, highlight: true)
                 }
             }
             Spacer(minLength: 0)
@@ -97,7 +97,7 @@ struct ThreadListView: View {
             HStack(spacing: 4) {
                 if let icon { IconImage(name: icon, size: 9.5).foregroundStyle(active ? color : Theme.faint) }
                 Text(title).font(Theme.ui(11.5, active ? .semibold : .regular))
-                Text("\(number)").font(Theme.mono(10)).foregroundStyle(highlight ? color : Theme.faint)
+                if number > 0 { Text("\(number)").font(Theme.mono(10)).foregroundStyle(highlight ? color : Theme.faint) }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3.5)
@@ -183,7 +183,7 @@ struct ThreadListView: View {
                         VStack(spacing: 0) {
                             ThreadRow(thread: thread, selected: thread.id == reader.selectedThreadID, rules: rules,
                                       viewingRule: { if case .rule(let name) = reader.mailbox { return name } else { return nil } }(),
-                                      compact: density != "spacious", showSnippet: showSnippets)
+                                      compact: density != "spacious", showSnippet: showSnippets, highlight: reader.highlightQuery)
                                 .id(Self.rowKey(thread))
                         }
                             .onTapGesture {
@@ -310,6 +310,8 @@ private struct ThreadRow: View {
     var viewingRule: String?
     let compact: Bool
     let showSnippet: Bool
+    /// 搜索词：标题和正文概览里高亮
+    var highlight: String?
     @State private var hovering = false
 
     /// PR 分组用 PR 自己的最新一封 GitHub 邮件来识别标题和编号，不被最新一封是 Jira / 机器人带偏。
@@ -395,7 +397,7 @@ private struct ThreadRow: View {
                         .fill(thread.isUnread ? (unread ? Theme.accent : Theme.faint) : .clear)
                         .frame(width: 6, height: 6)
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
-                    Text(title.isEmpty ? "（无主题）" : title)
+                    Text(Highlight.text(title.isEmpty ? "（无主题）" : title, query: highlight))
                         .font(Theme.title(14, unread ? .semibold : .regular, scheme: scheme))
                         // 未读：醒目的主色 + 加粗；已读：退成灰色，细字重
                         .foregroundStyle(unread ? Theme.text : Theme.muted)
@@ -406,15 +408,22 @@ private struct ThreadRow: View {
                 }
                 // PR 行不需要这一行（标题已经够认；仓库 / 编号 / 发件人点进去就能看到）；非 PR 的邮件靠发件人认
                 // 正文概览：最近一封真人邮件的开头，扫一眼就知道说了什么
-                if showSnippet, !thread.preview.isEmpty {
-                    Text(thread.preview)
+                if showSnippet || highlight != nil, !thread.preview.isEmpty {
+                    Text(Highlight.text(thread.preview, query: highlight))
                         .font(Theme.ui(12))
                         .foregroundStyle(unread ? Theme.muted : Theme.faint)
                         .lineLimit(2)
                         .padding(.leading, 13)
                 }
-                if !isPR { metaLine(info).padding(.leading, 13) }
-                if isPR { commentsLine(info).padding(.leading, 13) }
+                // 底部一行：左边是 PR 号 / 评论数（或发件人），右边是这个 PR / 邮件最后一次更新的时间
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    if isPR { commentsLine(info) } else { metaLine(info) }
+                    Spacer(minLength: 4)
+                    Text(DateText.updated(thread.date))
+                        .font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
+                        .help("最后更新：" + DateText.full(thread.date))
+                }
+                .padding(.leading, 13)
             }
             .padding(.leading, 6)
             .padding(.trailing, 12)
@@ -462,5 +471,20 @@ private struct DayHeader: View {
         .padding(.bottom, Theme.pad(6))
         .frame(maxWidth: .infinity)
         .background(Theme.bg)     // 吸顶时盖住下面滚过去的行，必须不透明
+    }
+}
+
+/// 列表里的搜索高亮：命中的字加底色。
+enum Highlight {
+    static func text(_ string: String, query: String?) -> AttributedString {
+        var text = AttributedString(string)
+        guard let query else { return text }
+        for range in SearchHighlight.ranges(of: query, in: string) {
+            guard let start = AttributedString.Index(range.lowerBound, within: text),
+                  let end = AttributedString.Index(range.upperBound, within: text) else { continue }
+            text[start..<end].backgroundColor = Color.yellow.opacity(0.4)
+            text[start..<end].foregroundColor = Theme.text
+        }
+        return text
     }
 }

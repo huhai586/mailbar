@@ -21,6 +21,14 @@ import Testing
         #expect(DateText.day(date(2025, 12, 3), now: now, calendar: cal) == "2025年12月3日")
     }
 
+    @Test func updatedTimeIsShortForTodayAndCarriesTheDateOtherwise() {
+        let now = date(2026, 10, 28, 9)
+        #expect(DateText.updated(date(2026, 10, 28, 7), now: now, calendar: cal) == "07:00")
+        #expect(DateText.updated(date(2026, 10, 27, 23), now: now, calendar: cal) == "昨天 23:00")
+        #expect(DateText.updated(date(2026, 10, 20, 14), now: now, calendar: cal) == "10月20日 14:00")
+        #expect(DateText.updated(date(2025, 12, 3, 8), now: now, calendar: cal) == "2025/12/3 08:00")
+    }
+
     @Test func sameDayShareAKey() {
         #expect(DateText.dayKey(date(2026, 10, 28, 1), calendar: cal) == DateText.dayKey(date(2026, 10, 28, 23), calendar: cal))
         #expect(DateText.dayKey(date(2026, 10, 28), calendar: cal) != DateText.dayKey(date(2026, 10, 27), calendar: cal))

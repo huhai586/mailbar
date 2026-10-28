@@ -38,6 +38,26 @@ private struct ThreadConversation: View {
     @State private var flashID: String?
     /// 打开会话时要定位到的那封（最早的未读）；没有未读就用第一封展开的
     @State private var focusTarget: String?
+    /// 搜索：每封邮件有几处命中（卡片自己算好报上来），当前跳到第几处
+    @State private var hitCounts: [String: Int] = [:]
+    @State private var hitCursor = 0
+    @State private var hitScroll: (anchor: String, nonce: Int)?
+
+    private var query: String? { reader.highlightQuery }
+
+    /// 主题、正文（原文或 HTML）里含搜索词的邮件。
+    private var searchMatches: Set<String> {
+        guard let query else { return [] }
+        return Set(messages.filter { m in
+            SearchHighlight.contains(query, in: m.subject) || SearchHighlight.contains(query, in: MessageText.of(m).plain)
+                || (m.bodyHtml.map { SearchHighlight.contains(query, in: $0) } ?? false)
+        }.map(\.id))
+    }
+
+    /// 所有命中，按时间线顺序：(邮件, 这封里的第几处)。
+    private var hits: [(id: String, index: Int)] {
+        shownMessages.flatMap { m in (0..<(hitCounts[m.id] ?? 0)).map { (m.id, $0) } }
+    }
 
     private var messages: [MessageDetail] { reader.messages }
     private var filter: DetailFilter { reader.detailFilters[reader.selectedThreadID ?? ""] ?? DetailFilter() }
@@ -94,8 +114,8 @@ private struct ThreadConversation: View {
         // 整个会话都是例行机器人消息（比如单独一封 SonarQube 通知）时也不折叠：折成一行就没有详情可看了
         let fold = filter.tab == .all && shownMessages.contains { $0.messageKind != .botRoutine }
         for message in shownMessages {
-            // 打开时还没读的例行消息不折叠：点进来就是为了看它
-            if fold, message.messageKind == .botRoutine, !reader.openedUnreadIDs.contains(message.id) {
+            // 打开时还没读的、搜索命中的例行消息不折叠：点进来就是为了看它
+            if fold, message.messageKind == .botRoutine, !reader.openedUnreadIDs.contains(message.id), !searchMatches.contains(message.id) {
                 run.append(message)
             } else {
                 flush()
@@ -103,7 +123,8 @@ private struct ThreadConversation: View {
             }
         }
         flush()
-        guard base.count > 12, !showAllOlder else { return base }
+        // 搜索时不折叠中间：命中可能就在中间
+        guard base.count > 12, !showAllOlder, searchMatches.isEmpty else { return base }
         let hidden = base[1..<(base.count - 8)]
         return [base[0], .folded(hidden.reduce(0) { $0 + $1.messageCount })] + base.suffix(8)
     }
@@ -113,6 +134,7 @@ private struct ThreadConversation: View {
             if !service.canModify, Pref.markRead != .manual { authorizeBanner }
             header
             if showsFilterBar { filterBar }
+            if let query, !hits.isEmpty { searchBar(query) }
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Theme.pad(10)) {
@@ -128,7 +150,10 @@ private struct ThreadConversation: View {
                                 MessageCard(message: message, info: reader.info(for: message),
                                             onSetKind: { service.setKind(forSender: MailAddress.parse(message.from).address, $0) },
                                             githubLogin: reader.githubLogin,
-                                            expanded: binding(message.id))
+                                            expanded: binding(message.id),
+                                            highlight: query,
+                                            currentHit: currentHit(in: message.id),
+                                            onHitCount: { hitCounts[message.id] = $0 })
                                     .overlay(RoundedRectangle(cornerRadius: Theme.radius).stroke(Theme.accent, lineWidth: 1.5).opacity(flashID == message.id ? 1 : 0))
                                     .id(message.id)
                             case .routine(let run):
@@ -156,6 +181,22 @@ private struct ThreadConversation: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                         withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo(id, anchor: .top) }
                     }
+                }
+                .onChange(of: hitScroll?.nonce) {
+                    guard let anchor = hitScroll?.anchor, let id = hits[safe: hitCursor]?.id else { return }
+                    // 先滚到那封邮件；正文是网页的，加载完量出命中位置后再对准那一处
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { proxy.scrollTo(id, anchor: .top) }
+                    for delay in [0.35, 0.9] {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                            withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(anchor, anchor: .top) }
+                        }
+                    }
+                }
+                // 在详情里改了搜索词：展开新命中的邮件，从第一处开始
+                .onChange(of: query) {
+                    hitCursor = 0
+                    expanded.formUnion(searchMatches)
+                    if !searchMatches.isEmpty { DispatchQueue.main.async { jumpToHit(0) } }
                 }
                 .onAppear { focusInitial(proxy) }
                 // 切换会话时 messages 可能比视图晚一拍更新：这时展开集合里全是上一个会话的邮件 id，一封都对不上，要重新来一遍
@@ -250,10 +291,53 @@ private struct ThreadConversation: View {
         // 从列表点进来是为了看新邮件：展开打开时还没读的（不管是真人还是机器人，最多 5 封），并滚到其中最早的一封
         let unread = Array(messages.filter { reader.openedUnreadIDs.contains($0.id) }.suffix(5))
         for message in unread { open.insert(message.id) }
+        // 从搜索结果点进来：展开命中的邮件，定位到第一处命中（优先于未读）
+        let matched = messages.filter { searchMatches.contains($0.id) }
+        for message in matched.prefix(20) { open.insert(message.id) }
         expanded = open
-        focusTarget = unread.first?.id
-        // 之前在这个会话里选过「真人」之类的筛选，会把未读的那封藏起来：先切回「全部」
-        if unread.contains(where: { !filter.includes($0.messageKind) }) { setFilter(DetailFilter()) }
+        focusTarget = matched.first?.id ?? unread.first?.id
+        // 之前在这个会话里选过「真人」之类的筛选，会把未读 / 命中的那封藏起来：先切回「全部」
+        if (unread + matched).contains(where: { !filter.includes($0.messageKind) }) { setFilter(DetailFilter()) }
+        if !matched.isEmpty { DispatchQueue.main.async { jumpToHit(0) } }
+    }
+
+    // MARK: Search hits
+
+    private func currentHit(in messageId: String) -> Int? {
+        guard let hit = hits[safe: hitCursor], hit.id == messageId else { return nil }
+        return hit.index
+    }
+
+    /// 跳到第 n 处命中（循环）：展开那封邮件，滚过去，并把那一处标成「当前」。
+    private func jumpToHit(_ n: Int) {
+        let all = hits
+        guard !all.isEmpty else { return }
+        hitCursor = (n % all.count + all.count) % all.count
+        let hit = all[hitCursor]
+        expanded.insert(hit.id)
+        hitScroll = ("hit-\(hit.id)-\(hit.index)", (hitScroll?.nonce ?? 0) + 1)
+    }
+
+    /// 搜索时显示在详情顶部：一共几处、当前第几处，上一处 / 下一处（⇧⌘G / ⌘G，或 ⇧↩ / ↩）。
+    private func searchBar(_ query: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Theme.faint)
+            Text("「\(query)」").font(Theme.ui(12, .medium)).foregroundStyle(Theme.text).lineLimit(1)
+            Text("\(min(hitCursor + 1, hits.count)) / \(hits.count)").font(Theme.mono(11.5)).foregroundStyle(Theme.muted)
+            Spacer()
+            Button { jumpToHit(hitCursor - 1) } label: { Image(systemName: "chevron.up").frame(width: 22, height: 20) }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                .help("上一处（⇧⌘G）")
+            Button { jumpToHit(hitCursor + 1) } label: { Image(systemName: "chevron.down").frame(width: 22, height: 20) }
+                .keyboardShortcut("g", modifiers: .command)
+                .help("下一处（⌘G）")
+        }
+        .buttonStyle(PlainPointerButtonStyle())
+        .foregroundStyle(Theme.muted)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 6)
+        .background(Color.yellow.opacity(0.08))
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 0.5) }
     }
 
     private func firstExpandedAfterFold() -> String? {
@@ -516,6 +600,13 @@ private struct MessageCard: View {
     var onSetKind: ((MessageKind) -> Void)?
     var githubLogin: String?
     @Binding var expanded: Bool
+    /// 搜索词：正文里高亮它
+    var highlight: String?
+    /// 当前跳到的是这封邮件里的第几处
+    var currentHit: Int?
+    /// 这封邮件按当前显示方式有几处命中（外面用来在各处之间跳转）
+    var onHitCount: ((Int) -> Void)?
+    @State private var hitOffsets: [CGFloat] = []
     @Environment(\.colorScheme) private var scheme
     @AppStorage(Pref.githubTextView) private var githubText = true
     @AppStorage(Pref.renderMarkdown) private var renderMarkdown = true
@@ -576,6 +667,8 @@ private struct MessageCard: View {
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(message.isUnread ? Theme.accent.opacity(0.55) : Theme.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .onAppear { onHitCount?(hitCount) }
+        .onChange(of: "\(highlight ?? "")|\(mode)") { onHitCount?(hitCount) }
     }
 
     private var headerRow: some View {
@@ -666,11 +759,11 @@ private struct MessageCard: View {
     private var content: some View {
         switch mode {
         case .html:
-            if let html = message.bodyHtml { webContent(html, style: .email, dark: scheme == .dark && invertEmails) }
+            if let html = message.bodyHtml { webContent(marked(html), style: .email, dark: scheme == .dark && invertEmails) }
         case .markdown:
-            webContent(MarkdownCache.shared.html(for: plainText), style: .markdown, dark: scheme == .dark)
+            webContent(marked(MarkdownCache.shared.html(for: plainText)), style: .markdown, dark: scheme == .dark)
         case .text:
-            Text(RichText.make(digest ?? plainText))
+            Text(highlightedText.text)
                 .font(monoBody ? Theme.mono(12.5) : Theme.ui(13.5))
                 .lineSpacing(monoBody ? 3 : 4)
                 .foregroundStyle(Theme.text)
@@ -678,7 +771,51 @@ private struct MessageCard: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
+                .overlay(alignment: .top) { hitAnchors(offsets: Array(repeating: 0, count: hitCount)) }
         }
+    }
+
+    // MARK: 搜索高亮
+
+    private func marked(_ html: String) -> String {
+        guard let highlight else { return html }
+        return HitCache.marked(html, query: highlight).html
+    }
+
+    /// 原文显示时的高亮：命中处加底色，当前这一处更醒目。
+    private var highlightedText: (text: AttributedString, count: Int) {
+        var text = RichText.make(digest ?? plainText)
+        guard let highlight else { return (text, 0) }
+        let plain = String(text.characters)
+        let ranges = SearchHighlight.ranges(of: highlight, in: plain)
+        for (index, range) in ranges.enumerated() {
+            guard let start = AttributedString.Index(range.lowerBound, within: text),
+                  let end = AttributedString.Index(range.upperBound, within: text) else { continue }
+            text[start..<end].backgroundColor = index == currentHit ? Color(red: 1, green: 0.59, blue: 0.2) : Color.yellow.opacity(0.45)
+            if index == currentHit { text[start..<end].foregroundColor = .black }
+        }
+        return (text, ranges.count)
+    }
+
+    /// 按当前显示方式，这封邮件有几处命中（折叠着也要算，外面才能跳过来）。
+    private var hitCount: Int {
+        guard let highlight else { return 0 }
+        switch mode {
+        case .html: return message.bodyHtml.map { HitCache.marked($0, query: highlight).count } ?? 0
+        case .markdown: return HitCache.marked(MarkdownCache.shared.html(for: plainText), query: highlight).count
+        case .text: return highlightedText.count
+        }
+    }
+
+    /// 每处命中放一个看不见的锚点，外面 scrollTo("hit-邮件id-序号") 就能对准它。
+    private func hitAnchors(offsets: [CGFloat]) -> some View {
+        ZStack(alignment: .top) {
+            ForEach(Array(offsets.enumerated()), id: \.offset) { index, y in
+                Color.clear.frame(height: 1).padding(.top, max(0, y - 60)).id("hit-\(message.id)-\(index)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .allowsHitTesting(false)
     }
 
     private func webContent(_ html: String, style: HTMLBodyView.Style, dark: Bool) -> some View {
@@ -693,8 +830,10 @@ private struct MessageCard: View {
                 .padding(.horizontal, 12).padding(.vertical, 5)
                 .background(Theme.raised)
             }
-            HTMLBodyView(html: html, allowRemoteImages: allowRemote, dark: dark, style: style, height: $htmlHeight)
+            HTMLBodyView(html: html, allowRemoteImages: allowRemote, dark: dark, style: style, height: $htmlHeight,
+                         currentHit: currentHit, onHitOffsets: highlight == nil ? nil : { hitOffsets = $0 })
                 .frame(height: htmlHeight)
+                .overlay(alignment: .top) { hitAnchors(offsets: hitOffsets) }
                 .onAppear {
                     if let cached = HTMLBodyView.heightCache[HTMLBodyView.heightKey(html: html, dark: dark, style: style)] { htmlHeight = cached }
                 }
@@ -735,4 +874,23 @@ struct MessageText {
         let cleaned = line.drop { "#>*-|` ".contains($0) }.replacingOccurrences(of: "**", with: "")
         return String(cleaned.prefix(160))
     }
+}
+
+/// 给网页正文打高亮标记的结果，按「内容 + 搜索词」缓存：卡片每次重绘都要用。
+@MainActor
+enum HitCache {
+    private static var cache: [String: (html: String, count: Int)] = [:]
+
+    static func marked(_ html: String, query: String) -> (html: String, count: Int) {
+        let key = "\(query)|\(html.count)|\(html.hashValue)"
+        if let hit = cache[key] { return hit }
+        if cache.count > 400 { cache.removeAll() }
+        let result = SearchHighlight.markHTML(html, query: query)
+        cache[key] = result
+        return result
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

@@ -72,7 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // 有窗口时显示 Dock 图标（可 ⌘Tab 切换），窗口都关了就只留菜单栏
         let center = NotificationCenter.default
-        for name in [NSWindow.didBecomeMainNotification, NSWindow.willCloseNotification] {
+        for name in [NSWindow.didBecomeMainNotification, NSWindow.willCloseNotification,
+                     NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification] {
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 DispatchQueue.main.async { self?.updateActivationPolicy() }
             }
@@ -92,7 +93,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateActivationPolicy() {
         // 设置窗口的标题是当前标签页的名字（「通用」「AI」……），按标识认，不按标题认
-        let hasWindow = NSApp.windows.contains { $0.isVisible && ($0.canBecomeMain || $0.identifier?.rawValue == "MailBarSettings") }
+        // 最小化到 Dock 的窗口不算「可见」，但也要保留 Dock 图标，不然窗口就找不回来了
+        // （最小化的窗口 canBecomeMain 会变成 false，所以单独判断）
+        let hasWindow = NSApp.windows.contains { $0.isMiniaturized || ($0.isVisible && ($0.canBecomeMain || $0.identifier?.rawValue == "MailBarSettings")) }
         // 强提醒要让 Dock 图标跳动，显示期间也需要 Dock 图标
         let bounce = service.strongAlerts.isShowing && Pref.strongBounce
         NSApp.setActivationPolicy(hasWindow || bounce ? .regular : .accessory)
@@ -112,6 +115,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func showMainWindow(mailbox: Mailbox?, threadId: String?) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        // 点通知 / 点菜单栏「打开邮件窗口」时，窗口可能正最小化在 Dock 里：先还原
+        for window in NSApp.windows where window.isMiniaturized { window.deminiaturize(nil) }
         if let open = service.openMainWindow {
             open()
         } else {
