@@ -178,11 +178,20 @@ public struct Palette: Identifiable, Sendable, Equatable {
         accent: 0x80A6FF, red: 0xFF9DA4, orange: 0xFFC58F, yellow: 0xFFEEAD, green: 0xD1F1A9, cyan: 0x99FFFF,
         blue: 0xBBDAFF, purple: 0xEBBBFF, pink: 0xFF9DD0, gray: 0x7285B7)
 
+    /// Darcula：JetBrains（WebStorm / IntelliJ）的经典深色主题，背景 #2B2B2B、侧栏 #3C3F41、文字 #A9B7C6，
+    /// 强调色是它的蓝（#4B6EAF），语法色取自它的代码配色：橙 #CC7832、绿 #6A8759、黄 #BBB529、紫 #9876AA、青 #6897BB。
+    public static let darcula = derived(
+        id: "darcula", title: "Darcula（WebStorm）", isDark: true, bg: 0x2B2B2B, panel: 0x3C3F41, raised: 0x4E5254, border: 0x515151,
+        text: 0xA9B7C6, muted: 0x9AA5B1, faint: 0x808B95,
+        accent: 0x589DF6, red: 0xFF6B68, orange: 0xCC7832, yellow: 0xBBB529, green: 0x6A8759, cyan: 0x299999,
+        blue: 0x6897BB, purple: 0x9876AA, pink: 0xD06FA8, gray: 0x808080)
+
     /// 设置里「主题」列表的顺序：先是应用自己的四套，再是参考 VS Code 的。
     public static let builtIn: [Palette] = [terminal, paper, night, day]
     public static let vscodeInspired: [Palette] = [darkModern, darkPlus, lightModern, monokai, solarizedDark, solarizedLight,
                                                    quietLight, abyss, kimbieDark, tomorrowNightBlue]
-    public static let all: [Palette] = builtIn + vscodeInspired
+    public static let jetbrains: [Palette] = [darcula]
+    public static let all: [Palette] = builtIn + vscodeInspired + jetbrains
 
     /// 按设置里存的标识找主题；「system」或不认识的标识返回 nil（由调用方按系统明暗选终端或纸质）。
     public static func named(_ id: String?) -> Palette? { all.first { $0.id == id } }

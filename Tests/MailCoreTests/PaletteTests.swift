@@ -17,7 +17,7 @@ import Testing
 
     @Test func everyThemeHasUniqueIDAndReadableText() {
         let ids = Palette.all.map(\.id)
-        #expect(Set(ids).count == ids.count && ids.count == 14)
+        #expect(Set(ids).count == ids.count && ids.count == 15)
         for p in Palette.all {
             for surface in p.surfaces {
                 #expect(Palette.contrast(p.text, surface) >= 7, "\(p.title) text")

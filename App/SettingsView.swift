@@ -68,6 +68,9 @@ private struct GeneralSettingsView: View {
                     Section("参考 VS Code 自带主题") {
                         ForEach(Palette.vscodeInspired) { Text($0.title).tag($0.id) }
                     }
+                    Section("JetBrains") {
+                        ForEach(Palette.jetbrains) { Text($0.title).tag($0.id) }
+                    }
                 }
                 if let palette = Palette.named(appearance) {
                     ThemeSwatch(palette: palette)

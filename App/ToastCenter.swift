@@ -129,7 +129,7 @@ private struct ToastCard: View {
                 .frame(width: 24).padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
                 // 只有标题和一段正文：标题粗一点，正文浅色细字
-                Text(item.title).font(Theme.ui(13.5, .bold)).foregroundStyle(Theme.text).lineLimit(2)
+                Text(item.title).font(Theme.ui(13.5, .bold)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)
                 if !item.body.isEmpty {
                     Text(item.body).font(Theme.ui(12)).foregroundStyle(Theme.muted).lineLimit(3)
                 }

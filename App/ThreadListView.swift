@@ -381,20 +381,8 @@ private struct ThreadRow: View {
 
     private var isPR: Bool { thread.source == "github" }
 
-    /// 未读行的色调：出问题偏红，待处理偏强调色，其余未读是普通的淡底。左侧竖线只留给「选中」，未读靠底色、圆点和字色区分，
-    /// 这些都不占位置，行高不会变。
-    private var tint: Color? {
-        if thread.alertUnread > 0 { return Theme.red }
-        if thread.needsAttention { return Theme.accent }
-        return nil
-    }
-
-    /// 未读行的底色（每个主题各一套，见 Theme.unreadFill 等）。
-    private var unreadFill: Color {
-        if thread.alertUnread > 0 { return Theme.unreadAlert }
-        if thread.needsAttention { return Theme.unreadAttention }
-        return Theme.unreadFill
-    }
+    /// 未读行统一用一种底色（每个主题各一套，见 Theme.unreadFill）。不再按「出问题 / 待处理」分颜色：
+    /// 出问题的可能是别人的 PR，和你无关，用颜色强调反而误导。左侧竖线只留给「选中」，行高也不变。
 
     /// 谁最近动了：优先真人（最新一封往往是机器人）。
     private var actor: String {
@@ -416,11 +404,12 @@ private struct ThreadRow: View {
                 if let number { Text(number).foregroundStyle(Theme.faint) }
                 if thread.humanCount > 0 {
                     HStack(spacing: 4) {
-                        Image(systemName: thread.humanUnread > 0 ? "text.bubble.fill" : "text.bubble").font(.system(size: 10))
+                        Image(systemName: thread.humanUnread > 0 ? "text.bubble.fill" : "text.bubble").font(.system(size: 10)).frame(width: 12, height: 12)
                         Text(thread.humanUnread > 0 ? "\(thread.humanCount) 条真人评论 · \(thread.humanUnread) 条新" : "\(thread.humanCount) 条真人评论")
                     }
                     .foregroundStyle(thread.humanUnread > 0 ? Theme.accent : Theme.muted)
-                    .fontWeight(thread.humanUnread > 0 ? .medium : .regular)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
                 }
             }
             .font(Theme.mono(11))
@@ -434,20 +423,22 @@ private struct ThreadRow: View {
         let title = info?.title ?? thread.subject
         HStack(alignment: .top, spacing: 0) {
             Color.clear.frame(width: 3)
-            ServiceIcon(source: thread.source, size: 15, color: unread ? (tint ?? Theme.accent) : Theme.faint)
+            ServiceIcon(source: thread.source, size: 15, color: unread ? Theme.accent : Theme.faint)
                 .frame(width: 28, height: 28)
-                .background(unread ? (tint ?? Theme.accent).opacity(0.16) : Theme.raised.opacity(0.5), in: Circle())
+                .background(unread ? Theme.accent.opacity(0.16) : Theme.raised.opacity(0.5), in: Circle())
                 .padding(.leading, 12)
                 .padding(.top, Theme.pad(compact ? 9 : 11))   // 和右边文字块同样的上边距：图标顶端对齐标题顶端
             VStack(alignment: .leading, spacing: Theme.pad(compact ? 3 : 5)) {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     // 未读圆点：有真人 / 出问题的未读是强调色；只有例行机器人未读是灰点
                     Circle()
-                        .fill(thread.isUnread ? (unread ? (tint ?? Theme.accent) : Theme.faint) : .clear)
+                        .fill(thread.isUnread ? (unread ? Theme.accent : Theme.faint) : .clear)
                         .frame(width: 6, height: 6)
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
                     Text(Highlight.text(title.isEmpty ? "（无主题）" : title, query: highlight))
-                        .font(Theme.title(14, unread ? .semibold : .regular, scheme: scheme))
+                        // 字重不随已读 / 未读变化：粗细不同的字宽度不同，标题的换行会变，点一下行高就跟着跳。
+                        // 已读 / 未读靠颜色、底色和圆点区分
+                        .font(Theme.title(14, .medium, scheme: scheme))
                         // 未读：醒目的主色 + 加粗；已读：退成灰色，细字重
                         .foregroundStyle(unread ? Theme.text : Theme.muted)
                         .lineLimit(nil)   // 标题完整显示，太长就换行
@@ -479,7 +470,7 @@ private struct ThreadRow: View {
             .padding(.vertical, Theme.pad(compact ? 9 : 11))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .background(unread ? unreadFill : .clear, in: RoundedRectangle(cornerRadius: 10))
+        .background(unread ? Theme.unreadFill : .clear, in: RoundedRectangle(cornerRadius: 10))
         .overlay { RoundedRectangle(cornerRadius: 10).fill(hovering ? Theme.hover : .clear).allowsHitTesting(false) }
         .overlay(alignment: .leading) {
             if selected { Capsule().fill(Theme.accent).frame(width: 3).padding(.vertical, 8) }   // 选中只亮一条左侧竖线，不改背景
