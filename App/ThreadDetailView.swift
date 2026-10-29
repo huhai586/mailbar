@@ -141,7 +141,7 @@ private struct ThreadConversation: View {
             if let query, !hits.isEmpty { searchBar(query) }
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: Theme.pad(10)) {
+                    VStack(spacing: Theme.pad(8)) {
                         if shownMessages.isEmpty {
                             Text("这一类里没有邮件").font(Theme.ui(12.5)).foregroundStyle(Theme.faint).padding(.top, 40)
                         }
@@ -171,10 +171,10 @@ private struct ThreadConversation: View {
                             }
                         }
                     }
-                    .frame(maxWidth: 900)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, Theme.pad(16))
+                    // 邮件占满整个详情宽度、彼此只隔一条细缝（像 Spark 那样），内容利用率更高
                     .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, Theme.pad(8))
                 }
                 .onChange(of: scrollRequest?.nonce) {
                     guard let id = scrollRequest?.id else { return }
@@ -664,8 +664,10 @@ struct MessageCard: View {
                 Rectangle().fill(Theme.border).frame(height: 0.5)
                 content
                 if let note = footerNote {
-                    Text(note)
+                    // 页脚里的网址（管理通知设置、取消订阅）要能点，不能只是一段文字
+                    Text(RichText.linkified(note))
                         .font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
+                        .tint(Theme.accent)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 16).padding(.vertical, 10)
@@ -673,16 +675,15 @@ struct MessageCard: View {
                 }
             }
         }
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(message.isUnread ? Theme.accent.opacity(0.55) : Theme.border, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
         .onAppear { onHitCount?(hitCount) }
         .onChange(of: "\(highlight ?? "")|\(mode)") { onHitCount?(hitCount) }
     }
 
     private var headerRow: some View {
         HStack(spacing: 10) {
-            Avatar(name: sender.displayName, size: 26)
+            if !expanded { Avatar(name: sender.displayName, size: 22) }   // 展开后不要头像：发件人、收件人直接排在正文上面
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(sender.displayName).font(Theme.mono(12.5, .semibold)).foregroundStyle(Theme.text).lineLimit(1)
@@ -701,8 +702,9 @@ struct MessageCard: View {
                 }
                 if !expanded {
                     Text(previewLine).font(Theme.ui(12)).foregroundStyle(Theme.muted).lineLimit(1)
-                } else if sender.name != nil {
-                    Text(sender.address).font(Theme.mono(10.5)).foregroundStyle(Theme.faint).lineLimit(1)
+                } else {
+                    // 展开：第二行是「发件地址 → 收件人」，和 Spark 一样把谁发给谁放在正文上面
+                    Text(recipientLine).font(Theme.mono(10.5)).foregroundStyle(Theme.faint).lineLimit(1).truncationMode(.tail)
                 }
             }
             Spacer(minLength: 8)
@@ -722,6 +724,13 @@ struct MessageCard: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(expanded ? "收起这封邮件" : "展开这封邮件")
         .accessibilityAction { withAnimation(.easeInOut(duration: 0.12)) { expanded.toggle() } }
+    }
+
+    private var recipientLine: String {
+        let names = message.to.split(separator: ",").map { MailAddress.parse(String($0)).displayName }.filter { !$0.isEmpty }
+        let shown = names.prefix(3).joined(separator: "、") + (names.count > 3 ? " 等 \(names.count) 人" : "")
+        let from = sender.name != nil ? sender.address : ""
+        return [from, shown.isEmpty ? "" : "收件人：" + shown].filter { !$0.isEmpty }.joined(separator: "  ·  ")
     }
 
     private static let kindChoices: [(MessageKind, String)] = [
@@ -797,7 +806,8 @@ struct MessageCard: View {
 
     /// 原文显示时的高亮：命中处加底色，当前这一处更醒目。
     private var highlightedText: (text: AttributedString, count: Int) {
-        var text = RichText.make(digest ?? plainText)
+        // 原文模式：逐字显示，只把网址变成可点的链接，不解析 Markdown
+        var text = RichText.linkified(plainText)
         guard let highlight else { return (text, 0) }
         let plain = String(text.characters)
         let ranges = SearchHighlight.ranges(of: highlight, in: plain)
@@ -869,12 +879,13 @@ struct MessageText {
         if let hit = cache[key] { return hit }
         if cache.count > 2_000 { cache.removeAll() }
         let raw = message.bodyText.isEmpty ? message.snippet : message.bodyText
-        let plain = message.isGitHubNotification ? GitHubText.stripFooter(raw) : raw
-        let digest = message.isGitHubNotification ? GitHubText.ciDigest(plain) : nil
+        // 邮件原文是什么就显示什么：不去页脚、不提取 CI 失败摘要（这两样以前会把原文改掉或拆开）
+        let plain = raw
+        let digest: String? = nil
         let made = MessageText(plain: plain,
-                               footer: message.isGitHubNotification ? GitHubText.footerNote(raw) : nil,
+                               footer: nil,
                                digest: digest,
-                               preview: previewLine(digest ?? plain, fallback: message.snippet),
+                               preview: previewLine(plain, fallback: message.snippet),
                                looksLikeMarkdown: MarkdownRenderer.looksLikeMarkdown(plain))
         cache[key] = made
         return made

@@ -126,7 +126,7 @@ struct HTMLBodyView: NSViewRepresentable {
         <style>
           \(fonts.faces)
           \(style == .markdown ? markdownCSS(dark: dark) : darkCSS)
-          body { font: \(Theme.bodyPx)px/1.55 \(fonts.sans); margin: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
+          body { font: \(Theme.bodyPx)px/1.55 \(fonts.sans); margin: 8px 12px; word-wrap: break-word; overflow-x: hidden; }
           img { max-width: 100%; height: auto; }
           pre, code { white-space: pre-wrap; font-family: \(fonts.mono); }
           table { max-width: 100%; }
@@ -144,7 +144,7 @@ struct HTMLBodyView: NSViewRepresentable {
         return """
           :root { color-scheme: \(c.scheme); }
           html { background: transparent; color: \(c.text); }
-          body { font: \(Theme.bodyPx)px/1.6 \(Theme.fontSet.css.sans); margin: 0; padding: 14px 18px; word-wrap: break-word; overflow-x: hidden; }
+          body { font: \(Theme.bodyPx)px/1.6 \(Theme.fontSet.css.sans); margin: 0; padding: 8px 12px; word-wrap: break-word; overflow-x: hidden; }
           a { color: \(c.link); text-decoration: none; }
           a:hover { text-decoration: underline; }
           h1, h2, h3, h4, h5 { margin: 18px 0 8px; font-weight: 600; line-height: 1.25; }

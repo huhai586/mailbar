@@ -21,4 +21,17 @@ enum RichText {
         }
         return result
     }
+
+    /// 只把网址变成可点的链接，不解析 Markdown（页脚这类原样文字里 _ * 之类的符号不能被当成格式）。
+    static func linkified(_ text: String) -> AttributedString {
+        var result = AttributedString(text)
+        let matches = linkDetector?.matches(in: text, range: NSRange(text.startIndex..., in: text)) ?? []
+        for match in matches {
+            guard let url = match.url, let range = Range(match.range, in: text),
+                  let lower = AttributedString.Index(range.lowerBound, within: result),
+                  let upper = AttributedString.Index(range.upperBound, within: result) else { continue }
+            result[lower..<upper].link = url
+        }
+        return result
+    }
 }
