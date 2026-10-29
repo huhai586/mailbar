@@ -104,7 +104,7 @@ enum Pref {
         defaultSound: "",
         notificationStyle: "card",
         toastSeconds: 10,
-        notificationPreviewChars: 100,
+        notificationPreviewChars: 200,
         calendarReminders: true,
         calendarLeadMinutes: 0,
         strongRepeatSeconds: 10,

@@ -7,6 +7,8 @@ struct ToastItem: Identifiable, Equatable {
     enum Kind { case mail, calendar }
     let id = UUID()
     var kind: Kind = .mail
+    /// 邮件来源：github / jira / googleDocs 用对应的品牌图标；其余（普通邮件）用信封
+    var source: String?
     /// 标题：邮件主题 / 日程名
     var title: String
     /// 正文：邮件内容的开头一段 / 日程的时间地点
@@ -69,7 +71,10 @@ final class ToastCenter: ObservableObject {
         timers[id]?.cancel()
         timers[id] = nil
         items.removeAll { $0.id == id }
-        if items.isEmpty { panel?.orderOut(nil) } else { resize() }
+        if items.isEmpty { panel?.orderOut(nil) } else {
+            resize()
+            DispatchQueue.main.async { [weak self] in self?.resize() }
+        }
     }
 
     private func present() {
@@ -88,6 +93,9 @@ final class ToastCenter: ObservableObject {
         }
         resize()
         panel?.orderFrontRegardless()
+        // 刚加进 items 时 SwiftUI 还没按新内容重新排版，上面量到的是旧高度：下一轮（排版完）再量一次，卡片才不会被裁成一行
+        DispatchQueue.main.async { [weak self] in self?.resize() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.resize() }
     }
 
     private func resize() {
@@ -122,11 +130,34 @@ private struct ToastCard: View {
     let item: ToastItem
     @State private var hovering = false
 
+    private var iconColor: Color {
+        switch item.source {
+        case "github": return Theme.text
+        case "jira": return Theme.cyan
+        case "googleDocs": return Theme.green
+        default: return item.kind == .calendar ? Theme.red : Theme.accent
+        }
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        Group {
+            if item.kind == .calendar {
+                Image(systemName: "calendar").font(.system(size: 26))
+            } else if let source = item.source, ["github", "jira", "googleDocs"].contains(source) {
+                ServiceIcon(source: source, size: 30, color: nil)
+            } else {
+                Image(systemName: "envelope.fill").font(.system(size: 26))
+            }
+        }
+        .foregroundStyle(iconColor)
+        .frame(width: 34, height: 34)
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: item.kind == .calendar ? "calendar" : "envelope.fill")
-                .font(.system(size: 17)).foregroundStyle(item.kind == .calendar ? Theme.red : Theme.accent)
-                .frame(width: 24).padding(.top, 1)
+        // 图标比文字大一圈，和整块文字垂直居中对齐（像 Spark 那样）
+        HStack(alignment: .center, spacing: 12) {
+            icon
             VStack(alignment: .leading, spacing: 3) {
                 // 只有标题和一段正文：标题粗一点，正文浅色细字
                 Text(item.title).font(Theme.ui(13.5, .bold)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)

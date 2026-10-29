@@ -79,7 +79,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         for hit in normal { postHit(hit, useDefaultSound: effectiveSound(hit) == nil, accountID: accountID) }
     }
 
-    private func postHit(_ hit: RuleHit, useDefaultSound: Bool, accountID: String?, forceSystem: Bool = false) {
+    func postHit(_ hit: RuleHit, useDefaultSound: Bool, accountID: String?, forceSystem: Bool = false) {
         // AI 判断过的（理由以「AI：」开头）系统通知上带 👍 / 👎 操作
         let judged = hit.snippet.hasPrefix("AI：")
         // 只有标题（邮件主题）和正文（邮件内容的前几十个字）；没有内容可显示时用发件人顶上
@@ -87,13 +87,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         var body = SnippetText.clip(hit.preview, to: Pref.notificationPreviewLimit)
         if body == subject { body = "" }
         if body.isEmpty { body = MailAddress.parse(hit.from).displayName }
+        // 来源决定卡片上的图标：GitHub / Jira / Google 文档用品牌图标，其余是信封
+        let source = NotificationClassifier.classify(subject: hit.subject, from: hit.from, reason: nil, body: hit.snippet)?.service.rawValue
         post(id: "\(hit.messageId)-\(hit.ruleName)", title: subject.isEmpty ? "（无主题）" : subject, body: body,
              threadId: hit.threadId, useDefaultSound: useDefaultSound,
-             judgedMessageId: judged ? hit.messageId : nil, accountID: accountID, forceSystem: forceSystem)
+             judgedMessageId: judged ? hit.messageId : nil, accountID: accountID, forceSystem: forceSystem, source: source)
     }
 
     func post(id: String, title: String, body: String, threadId: String?, useDefaultSound: Bool, judgedMessageId: String? = nil, accountID: String? = nil,
-              forceSystem: Bool = false, calendar: Bool = false, joinURL: URL? = nil) {
+              forceSystem: Bool = false, calendar: Bool = false, joinURL: URL? = nil, source: String? = nil) {
         if Pref.useToastCards, !forceSystem, let toasts {
             // 应用内卡片：显示时长由设置决定；提示音这里自己播（系统通知才会自带）
             if useDefaultSound { SoundLibrary.play("Glass") }
@@ -102,6 +104,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             item.accountID = accountID
             item.threadId = threadId
             item.joinURL = joinURL
+            item.source = source
             item.judgedMessageId = judgedMessageId
             Task { @MainActor in toasts.show(item) }
             return

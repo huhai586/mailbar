@@ -221,13 +221,27 @@ private struct AlertSettingsView: View {
     @AppStorage(Pref.defaultSound) private var defaultSound = ""
     @AppStorage(Pref.notificationStyle) private var notificationStyle = "card"
     @AppStorage(Pref.toastSeconds) private var toastSeconds = 10
-    @AppStorage(Pref.notificationPreviewChars) private var previewChars = 100
+    @AppStorage(Pref.notificationPreviewChars) private var previewChars = 200
+    @State private var testIndex = 0
     @AppStorage(Pref.calendarReminders) private var calendarReminders = true
     @AppStorage(Pref.calendarLeadMinutes) private var calendarLead = 0
     @AppStorage(Pref.strongRepeatSeconds) private var repeatSeconds = 10
     @AppStorage(Pref.strongMaxMinutes) private var maxMinutes = 5
     @AppStorage(Pref.strongBounceDock) private var bounce = true
     @AppStorage(Pref.strongSound) private var strongSound = "Sosumi"
+
+    /// 每点一次，依次拿最新的一封、次新的一封……真实邮件当内容源，走和真正的新邮件通知完全相同的路径（同样的标题、正文、样式、提示音），
+    /// 不加任何「测试」字样；到头了就从最新的重新开始。
+    private func sendTestNotification() {
+        guard let store = service.store,
+              let threads = try? store.threads(in: .allMail, groupByPR: false, limit: 30), !threads.isEmpty else { return }
+        let thread = threads[testIndex % threads.count]
+        testIndex += 1
+        let hit = RuleHit(messageId: thread.latestMessageId, threadId: thread.latestThreadId, ruleName: "新邮件",
+                          subject: thread.subject, from: thread.from, snippet: thread.snippet, sound: nil, strong: false,
+                          preview: SnippetText.preview(thread.snippet))
+        service.notifier.postHit(hit, useDefaultSound: true, accountID: service.currentAccountID)
+    }
 
     var body: some View {
         Form {
@@ -281,11 +295,8 @@ private struct AlertSettingsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Spacer()
-                        Button("试一下通知") {
-                            service.notifier.post(id: "demo-\(UUID().uuidString)", title: "【示例】通知预览",
-                                                  body: "fix(VM-3557): empty the endcard iframe\n" + SnippetText.clip("@kobolsky-vungle commented on this pull request. In viewmaster/src/util/get-https-upgrade-url.ts: this should also handle the case where the scheme is missing, otherwise we will crash.", to: Pref.notificationPreviewLimit),
-                                                  threadId: nil, useDefaultSound: true)
-                        }
+                        Button("试一下通知") { sendTestNotification() }
+                            .disabled(service.store == nil)
                     }
                 } else {
                     Text("系统通知的显示时长由 macOS 决定（通常几秒）。想让它一直留着，可以在「系统设置 → 通知 → Sift」里把通知样式改成「提醒」。")
