@@ -102,9 +102,9 @@ struct ThreadListView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3.5)
+            // 来源筛选是第二层：轻量的文字筛选，没有描边，选中只有一层柔和浅填充（第一层是上面的分段控件）
             .foregroundStyle(active ? Theme.text : Theme.muted)
-            .background(active ? Theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? Color.clear : Theme.border.opacity(0.7), lineWidth: 0.5))
+            .background(active ? Theme.text.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(PlainPointerButtonStyle())
     }
@@ -433,9 +433,10 @@ private struct ThreadRow: View {
         let title = info?.title ?? thread.subject
         HStack(alignment: .top, spacing: 0) {
             Color.clear.frame(width: 3)
-            ServiceIcon(source: thread.source, size: 15, color: unread ? Theme.accent : Theme.faint)
+            // 头像：透明底 + 细边的小圆，图标用灰（不再是一块彩色圆）；状态由右边的小圆点和文字深浅表示
+            ServiceIcon(source: thread.source, size: 14, color: unread ? Theme.muted : Theme.faint)
                 .frame(width: 28, height: 28)
-                .background(unread ? Theme.accent.opacity(0.16) : Theme.raised.opacity(0.5), in: Circle())
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
                 .padding(.leading, 12)
                 .padding(.top, Theme.pad(compact ? 9 : 11))   // 和右边文字块同样的上边距：图标顶端对齐标题顶端
             VStack(alignment: .leading, spacing: Theme.pad(compact ? 3 : 5)) {
@@ -462,7 +463,7 @@ private struct ThreadRow: View {
                     Text(Highlight.text(thread.preview, query: highlight))
                         .font(Theme.ui(12))
                         .foregroundStyle(previewColor)
-                        .lineLimit(2)
+                        .lineLimit(1)      // 摘要只占一行（标题—摘要—元信息三层，行高更稳）
                         .padding(.leading, 13)
                 }
                 // 底部一行：左边是 PR 号 / 评论数（或发件人），右边是这个 PR / 邮件最后一次更新的时间
@@ -482,9 +483,9 @@ private struct ThreadRow: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         // 只要有未读就有底色（包括只剩例行机器人未读的 PR）；它们和「有真人动静」的未读靠文字颜色的深浅区分
         .background(unread ? Theme.unreadFill : .clear, in: RoundedRectangle(cornerRadius: 10))
-        .overlay { RoundedRectangle(cornerRadius: 10).fill(hovering ? Theme.hover : .clear).allowsHitTesting(false) }
+        .overlay { RoundedRectangle(cornerRadius: 10).fill(selected ? Theme.text.opacity(0.07) : (hovering ? Theme.hover : .clear)).allowsHitTesting(false) }   // 选中行：柔和浅填充，对应右栏正在看的会话
         .overlay(alignment: .leading) {
-            if selected { Capsule().fill(Theme.accent).frame(width: 3).padding(.vertical, 8) }   // 选中只亮一条左侧竖线，不改背景
+            if selected { Capsule().fill(Theme.accent.opacity(0.75)).frame(width: 2).padding(.vertical, 10) }   // 选中：细的强调色竖线 + 上面的柔和浅填充
         }
         .padding(.horizontal, 6).padding(.vertical, 1)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border.opacity(0.7)).frame(height: 0.5) }

@@ -116,9 +116,13 @@ struct CountBadge: View {
     var color: Color = Theme.muted
     var body: some View {
         if count > 0 {
+            // 小胶囊：低饱和底 + 细边，数字不抢眼（参照新版设计稿）
             Text(count > 999 ? "999+" : "\(count)")
                 .font(Theme.mono(10.5, .semibold))
                 .foregroundStyle(color)
+                .padding(.horizontal, 6).padding(.vertical, 1.5)
+                .background(Theme.raised.opacity(0.7), in: Capsule())
+                .overlay(Capsule().stroke(Theme.border, lineWidth: 0.5))
         }
     }
 }
@@ -142,11 +146,11 @@ struct KeyHint: View {
 }
 
 extension View {
-    /// 侧栏选中项：淡淡的强调色底 + 左边一条 2px 色带。
+    /// 侧栏选中项：柔和的中性浅填充（文字色的 6%，各主题自动适配）+ 左边一条细的强调色带，是整个侧栏唯一明确的高亮。
     func navSelected(_ selected: Bool) -> some View {
-        background(selected ? Theme.accent.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+        background(selected ? Theme.text.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: Theme.radius))
             .overlay(alignment: .leading) {
-                if selected { Capsule().fill(Theme.accent).frame(width: 2, height: 14).offset(x: -1) }
+                if selected { Capsule().fill(Theme.accent.opacity(0.75)).frame(width: 2).padding(.vertical, 7).offset(x: -1) }
             }
     }
 }
