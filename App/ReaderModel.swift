@@ -381,7 +381,11 @@ final class ReaderModel: ObservableObject {
 
     // MARK: - Keyboard / selection
 
+    /// 选中项是被键盘 / 菜单（j k 方向键、上一封 下一封）移动的：列表据此把它滚进视野，点击选中则不滚动
+    var scrollSelectionIntoView = false
+
     func moveSelection(by delta: Int) {
+        scrollSelectionIntoView = true
         let rows = visibleThreads
         guard !rows.isEmpty else { return }
         if let current = rows.firstIndex(where: { $0.id == selectedThreadID }) {

@@ -253,6 +253,9 @@ struct ThreadListView: View {
             .focused($listFocused)
             .onKeyPress(phases: .down) { handleKey($0) }
             .onChange(of: reader.selectedThreadID) { _, id in
+                // 只有键盘 / 菜单移动选中项时才把它滚进视野；点击选中不滚动，滚动始终由用户自己控制
+                guard reader.scrollSelectionIntoView else { return }
+                reader.scrollSelectionIntoView = false
                 if let id { proxy.scrollTo(id) }
             }
             .overlay { if reader.threads.isEmpty { emptyState } }
