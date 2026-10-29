@@ -38,5 +38,5 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: N29KZ7R4WK
-        MARKETING_VERSION: "0.6.6"
-        CURRENT_PROJECT_VERSION: "30"
+        MARKETING_VERSION: "0.6.7"
+        CURRENT_PROJECT_VERSION: "31"

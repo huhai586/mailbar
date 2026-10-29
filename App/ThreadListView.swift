@@ -387,6 +387,13 @@ private struct ThreadRow: View {
     /// 未读行统一用一种底色（每个主题各一套，见 Theme.unreadFill）。不再按「出问题 / 待处理」分颜色：
     /// 出问题的可能是别人的 PR，和你无关，用颜色强调反而误导。左侧竖线只留给「选中」，行高也不变。
 
+    /// 文字颜色分两档（背景、字号、字重不变，行高不会变）：未读 = 整行深色；已读 = 整行明显退淡。
+    /// 标题、预览、PR 号、时间一起变。只要有未读（哪怕只是例行机器人消息）就算未读。
+    private var titleColor: Color { unread ? Theme.text : Theme.faint.opacity(0.85) }
+    private var previewColor: Color { unread ? Theme.text.opacity(0.88) : Theme.faint.opacity(0.78) }
+    /// 底部一行（PR 号、时间、发件人）的颜色
+    private var metaColor: Color { unread ? Theme.muted : Theme.faint.opacity(0.75) }
+
     /// 谁最近动了：优先真人（最新一封往往是机器人）。
     private var actor: String {
         let from = isPR ? (thread.lastHumanFrom ?? thread.from) : thread.from
@@ -395,8 +402,8 @@ private struct ThreadRow: View {
 
     @Environment(\.colorScheme) private var scheme
 
-    /// 真正算"未读"的：有真人 / 出问题 / 非 PR 的未读；只剩例行机器人未读的 PR 当作已读。
-    private var unread: Bool { thread.isUnread && !(thread.onlyRoutineUnread && isPR) }
+    
+    private var unread: Bool { thread.isUnread }
 
     /// PR 行底部：PR 号 + 已有多少条真人评论（没有真人评论就只显示 PR 号；有新的未读评论用强调色标出来）。
     @ViewBuilder
@@ -404,7 +411,7 @@ private struct ThreadRow: View {
         let number = info?.reference.map { $0.replacingOccurrences(of: "PR ", with: "") }
         if number != nil || thread.humanCount > 0 {
             HStack(spacing: 10) {
-                if let number { Text(number).foregroundStyle(Theme.faint) }
+                if let number { Text(number).foregroundStyle(metaColor) }
                 if thread.humanCount > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: thread.humanUnread > 0 ? "text.bubble.fill" : "text.bubble").font(.system(size: 10)).frame(width: 12, height: 12)
@@ -435,7 +442,7 @@ private struct ThreadRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     // 未读圆点：有真人 / 出问题的未读是强调色；只有例行机器人未读是灰点
                     Circle()
-                        .fill(thread.isUnread ? (unread ? Theme.accent : Theme.faint) : .clear)
+                        .fill(unread ? Theme.accent : .clear)
                         .frame(width: 6, height: 6)
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
                     Text(Highlight.text(title.isEmpty ? "（无主题）" : title, query: highlight))
@@ -443,7 +450,7 @@ private struct ThreadRow: View {
                         // 已读 / 未读靠颜色、底色和圆点区分
                         .font(Theme.title(14, .medium, scheme: scheme))
                         // 未读：醒目的主色 + 加粗；已读：退成灰色，细字重
-                        .foregroundStyle(unread ? Theme.text : Theme.muted)
+                        .foregroundStyle(titleColor)
                         .lineLimit(nil)   // 标题完整显示，太长就换行
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
@@ -454,7 +461,7 @@ private struct ThreadRow: View {
                 if showSnippet || highlight != nil, !thread.preview.isEmpty {
                     Text(Highlight.text(thread.preview, query: highlight))
                         .font(Theme.ui(12))
-                        .foregroundStyle(unread ? Theme.text.opacity(0.62) : Theme.faint)
+                        .foregroundStyle(previewColor)
                         .lineLimit(2)
                         .padding(.leading, 13)
                 }
@@ -463,7 +470,7 @@ private struct ThreadRow: View {
                     if isPR { commentsLine(info) } else { metaLine(info) }
                     Spacer(minLength: 4)
                     Text(DateText.updated(thread.date))
-                        .font(Theme.mono(10.5)).foregroundStyle(Theme.faint)
+                        .font(Theme.mono(10.5)).foregroundStyle(metaColor)
                         .help("最后更新：" + DateText.full(thread.date))
                 }
                 .padding(.leading, 13)
@@ -473,6 +480,7 @@ private struct ThreadRow: View {
             .padding(.vertical, Theme.pad(compact ? 9 : 11))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        // 只要有未读就有底色（包括只剩例行机器人未读的 PR）；它们和「有真人动静」的未读靠文字颜色的深浅区分
         .background(unread ? Theme.unreadFill : .clear, in: RoundedRectangle(cornerRadius: 10))
         .overlay { RoundedRectangle(cornerRadius: 10).fill(hovering ? Theme.hover : .clear).allowsHitTesting(false) }
         .overlay(alignment: .leading) {
@@ -491,7 +499,7 @@ private struct ThreadRow: View {
 
     private func spokenSummary(title: String) -> String {
         var parts: [String] = []
-        if thread.isUnread { parts.append(unread ? "未读" : "未读（仅例行消息）") }
+        if unread { parts.append("未读") }
         parts.append(title.isEmpty ? "无主题" : title)
         parts.append(actor)
         if !thread.preview.isEmpty { parts.append(thread.preview) }
