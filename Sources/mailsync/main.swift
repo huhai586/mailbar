@@ -11,6 +11,7 @@ import MailCore
 //   mailsync recent [N]                列出本地最新 N 封（默认 20）
 //   mailsync search <关键词>            搜索本地邮件的主题/发件人/正文
 //   mailsync status                    查看同步状态
+//   mailsync seed-demo                 往邮件库写入 CI 截图用的演示数据（配合 MAIL_DB 指向临时库）
 //   mailsync auth                      查看授权状态（是否允许修改邮件状态）
 //   mailsync login                     重新走一遍浏览器授权（升级到"可修改邮件状态"时用）
 //   mailsync logout                    清除 Keychain 中保存的 token
@@ -142,6 +143,11 @@ do {
         print("historyId: \(store.historyId ?? "-")")
         print("本地邮件: \(try store.messageCount()) 封")
 
+    case "seed-demo":
+        let store = try MailStore(path: MailStore.defaultPath())
+        try DemoData.seed(store: store)
+        print("演示数据已写入 \(MailStore.defaultPath())：\(try store.messageCount()) 封，账号 \(DemoData.accountEmail)")
+
     case "auth":
         let oauth = OAuthClient(config: try ClientConfig.load(), interactive: false)
         print(oauth.canModify ? "已授权：可读取、可修改邮件状态（标记已读）" : "当前授权：仅可读取。要在应用里标记已读，请运行 mailsync login 或在应用的设置里点「授权」。")
@@ -156,7 +162,7 @@ do {
         print("已清除本机保存的 token")
 
     default:
-        print("用法: mailsync sync | watch | rules | matches [规则名] | rematch | sounds | recent [N] | search <关键词> | status | auth | login | logout")
+        print("用法: mailsync sync | watch | rules | matches [规则名] | rematch | sounds | recent [N] | search <关键词> | status | seed-demo | auth | login | logout")
         exit(args.isEmpty ? 0 : 2)
     }
 } catch {
